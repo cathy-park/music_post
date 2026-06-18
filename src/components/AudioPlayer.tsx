@@ -1,5 +1,6 @@
 import { Pause, Play, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { resolveAudioUrl } from '../lib/idb';
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds)) return '0:00';
@@ -18,6 +19,17 @@ export default function AudioPlayer({ src, title }: Props) {
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [resolvedSrc, setResolvedSrc] = useState<string>('');
+
+  useEffect(() => {
+    let active = true;
+    const loadSrc = async () => {
+      const url = await resolveAudioUrl(src);
+      if (active) setResolvedSrc(url);
+    };
+    loadSrc();
+    return () => { active = false; };
+  }, [src]);
 
   useEffect(() => {
     setPlaying(false);
@@ -27,10 +39,10 @@ export default function AudioPlayer({ src, title }: Props) {
       ref.current.pause();
       ref.current.load();
     }
-  }, [src]);
+  }, [resolvedSrc]);
 
   const toggle = async () => {
-    if (!src || !ref.current) return;
+    if (!resolvedSrc || !ref.current) return;
     if (playing) ref.current.pause();
     else await ref.current.play();
   };
@@ -39,19 +51,19 @@ export default function AudioPlayer({ src, title }: Props) {
     <div className="player-shell" aria-label={`${title} 오디오 플레이어`}>
       <audio
         ref={ref}
-        src={src || undefined}
+        src={resolvedSrc || undefined}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
         onTimeUpdate={(event) => setCurrent(event.currentTarget.currentTime)}
         onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
       />
-      <button className="play-button" onClick={toggle} disabled={!src} aria-label={playing ? '일시정지' : '재생'}>
+      <button className="play-button" onClick={toggle} disabled={!resolvedSrc} aria-label={playing ? '일시정지' : '재생'}>
         {playing ? <Pause size={22} /> : <Play size={22} fill="currentColor" />}
       </button>
       <div className="player-main">
         <div className="player-topline">
-          <strong>{src ? '노래일기 듣기' : '음원 준비 중'}</strong>
+          <strong>{resolvedSrc ? '노래일기 듣기' : '음원 준비 중'}</strong>
           <span>{formatTime(current)} / {formatTime(duration)}</span>
         </div>
         <input
@@ -61,7 +73,7 @@ export default function AudioPlayer({ src, title }: Props) {
           max={duration || 1}
           step={0.01}
           value={current}
-          disabled={!src}
+          disabled={!resolvedSrc}
           onChange={(event) => {
             const next = Number(event.target.value);
             setCurrent(next);

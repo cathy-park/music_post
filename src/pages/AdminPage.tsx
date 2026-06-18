@@ -1,4 +1,4 @@
-import { Check, Copy, LogIn, Music, Plus, Save, Trash2, UploadCloud } from 'lucide-react';
+import { Check, Copy, Lock, LogIn, Music, Plus, Save, Trash2, UploadCloud } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { isSupabaseReady, supabase } from '../lib/supabase';
 import { deleteEntry, getAdminData, saveBook, saveEntry } from '../lib/repository';
@@ -27,6 +27,8 @@ export default function AdminPage() {
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
 
   const load = async () => {
     try {
@@ -97,6 +99,38 @@ export default function AdminPage() {
             <button className="primary-button" type="submit">로그인 링크 받기</button>
           </form>
           {message && <p className="status-message">{message}</p>}
+        </div>
+      </main>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <main className="admin-login">
+        <div className="admin-login-card">
+          <Lock size={28} style={{ color: '#8870d7' }} />
+          <h1>관리자 페이지</h1>
+          <p>접근을 위해 비밀번호를 입력해주세요.</p>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (passwordInput === '0530') {
+              setIsUnlocked(true);
+              setMessage('');
+            } else {
+              setMessage('비밀번호가 올바르지 않습니다.');
+            }
+          }}>
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="비밀번호"
+              required
+              autoFocus
+            />
+            <button className="primary-button" type="submit" style={{ width: '100%', marginTop: '10px' }}>확인</button>
+          </form>
+          {message && <p className="status-message" style={{ color: '#d76072' }}>{message}</p>}
         </div>
       </main>
     );

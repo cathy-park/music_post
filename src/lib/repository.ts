@@ -1,6 +1,7 @@
 import type { DiaryBook, DiaryEntry } from '../types';
 import { loadLocalBook, loadLocalEntries, saveLocalBook, saveLocalEntries } from './storage';
 import { isSupabaseReady, supabase } from './supabase';
+import { saveAudioToIdb } from './idb';
 
 function mapBook(row: Record<string, unknown>): DiaryBook {
   return {
@@ -29,6 +30,7 @@ function mapEntry(row: Record<string, unknown>): DiaryEntry {
     coverTone: (row.cover_tone as DiaryEntry['coverTone']) ?? 'night',
     order: Number(row.sort_order ?? 0),
     published: Boolean(row.published),
+    icon: String(row.icon ?? '🎵'),
   };
 }
 
@@ -107,15 +109,13 @@ export async function saveBook(book: DiaryBook): Promise<void> {
 }
 
 export async function saveEntry(entry: DiaryEntry, audioFile?: File): Promise<DiaryEntry> {
+  // ── 로컬(데모) 모드: IndexedDB에 오디오 저장 ──
   if (!isSupabaseReady || !supabase) {
     let audioUrl = entry.audioUrl;
     if (audioFile) {
-      audioUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result ?? ''));
-        reader.onerror = () => reject(new Error('음원 파일을 읽지 못했습니다.'));
-        reader.readAsDataURL(audioFile);
-      });
+      // localStorage 용량 초과 방지: IndexedDB에 파일 저장
+      const key = `${entry.id}-${Date.now()}`;
+      audioUrl = await saveAudioToIdb(key, audioFile);
     }
     const next = { ...entry, audioUrl };
     const entries = loadLocalEntries();
@@ -126,6 +126,7 @@ export async function saveEntry(entry: DiaryEntry, audioFile?: File): Promise<Di
     return next;
   }
 
+  // ── Supabase 모드 ──
   let audioUrl = entry.audioUrl;
   if (audioFile) {
     const safeName = audioFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -151,6 +152,7 @@ export async function saveEntry(entry: DiaryEntry, audioFile?: File): Promise<Di
     cover_tone: entry.coverTone,
     sort_order: entry.order,
     published: entry.published,
+    icon: entry.icon ?? '🎵',
   };
 
   const { data, error } = await supabase
