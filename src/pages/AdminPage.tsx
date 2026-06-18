@@ -16,6 +16,7 @@ const emptyEntry = (bookId: string, order: number): DiaryEntry => ({
   coverTone: 'night',
   order,
   published: false,
+  icon: '🎵',
 });
 
 export default function AdminPage() {
@@ -162,7 +163,7 @@ export default function AdminPage() {
           <div className="admin-entry-list">
             {entries.map((entry) => (
               <button key={entry.id} className={entry.id === selectedId ? 'active' : ''} onClick={() => setSelectedId(entry.id)}>
-                <Music size={16} />
+                <span className="admin-entry-emoji">{entry.icon || '🎵'}</span>
                 <span><strong>{entry.title || '제목 없음'}</strong><small>{entry.published ? '공개' : '비공개'} · {entry.dateLabel}</small></span>
               </button>
             ))}
@@ -185,6 +186,20 @@ export default function AdminPage() {
                 <label>부제<input value={selected.subtitle} onChange={(e) => updateSelected({ subtitle: e.target.value })} /></label>
                 <label>날짜 라벨<input value={selected.dateLabel} onChange={(e) => updateSelected({ dateLabel: e.target.value })} /></label>
                 <label>정렬 순서<input type="number" value={selected.order} onChange={(e) => updateSelected({ order: Number(e.target.value) })} /></label>
+                <label>
+                  아이콘 이모지
+                  <div className="emoji-input-wrap">
+                    <span className="emoji-preview">{selected.icon || '🎵'}</span>
+                    <input
+                      className="emoji-input"
+                      value={selected.icon ?? ''}
+                      onChange={(e) => updateSelected({ icon: e.target.value })}
+                      placeholder="🎵"
+                      maxLength={8}
+                    />
+                  </div>
+                  <small className="emoji-hint">토스페이스 이모지를 붙여넣거나 직접 입력하세요</small>
+                </label>
                 <label>커버 분위기
                   <select value={selected.coverTone} onChange={(e) => updateSelected({ coverTone: e.target.value as DiaryEntry['coverTone'] })}>
                     <option value="night">별이 많은 밤</option>

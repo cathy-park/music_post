@@ -1,6 +1,6 @@
-import { Heart, LockKeyhole, Music2 } from 'lucide-react';
+import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import AudioPlayer from '../components/AudioPlayer';
 import EmptyAudio from '../components/EmptyAudio';
 import EntryCard from '../components/EntryCard';
@@ -14,6 +14,7 @@ export default function ViewerPage() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [activeId, setActiveId] = useState('');
   const [error, setError] = useState('');
+  const [playlistOpen, setPlaylistOpen] = useState(false);
 
   useEffect(() => {
     getViewerData(token)
@@ -60,7 +61,29 @@ export default function ViewerPage() {
         </header>
 
         <section className="diary-board">
-          <aside className="playlist-panel">
+          {/* 모바일: 플레이리스트 드로어 토글 버튼 */}
+          <button
+            className="playlist-drawer-toggle"
+            onClick={() => setPlaylistOpen((prev) => !prev)}
+            aria-expanded={playlistOpen}
+            aria-label="플레이리스트 열기/닫기"
+          >
+            <div className="drawer-toggle-left">
+              <div className="playlist-sticker"><Music2 size={16} /></div>
+              <div className="drawer-toggle-info">
+                <span className="drawer-label">PLAYLIST</span>
+                <span className="drawer-active-title">
+                  {activeEntry ? activeEntry.icon || '🎵' : ''} {activeEntry?.title ?? '재생 목록'}
+                </span>
+              </div>
+            </div>
+            <div className="drawer-toggle-right">
+              <span className="playlist-count">{entries.length}곡</span>
+              {playlistOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </div>
+          </button>
+
+          <aside className={`playlist-panel${playlistOpen ? ' drawer-open' : ''}`}>
             <div className="playlist-heading">
               <div className="playlist-sticker"><Music2 size={18} /></div>
               <div className="playlist-heading-copy">
@@ -76,7 +99,10 @@ export default function ViewerPage() {
                   key={entry.id}
                   entry={entry}
                   active={entry.id === activeEntry?.id}
-                  onClick={() => setActiveId(entry.id)}
+                  onClick={() => {
+                    setActiveId(entry.id);
+                    setPlaylistOpen(false); // 모바일에서 선택 후 드로어 닫기
+                  }}
                 />
               ))}
             </div>
@@ -122,7 +148,7 @@ export default function ViewerPage() {
                   <aside className="comment-card">
                     <div className="comment-icon" aria-hidden="true">💭</div>
                     <div className="comment-copy">
-                      <span>소연의 짧은 코멘트</span>
+                      <span>{book.senderName}의 짧은 코멘트</span>
                       <p>{activeEntry.comment}</p>
                       <small>— {book.senderName}</small>
                     </div>
@@ -140,6 +166,15 @@ export default function ViewerPage() {
           </section>
         </section>
       </div>
+
+      {/* 관리자 페이지 버튼 (우측 하단 플로팅) */}
+      <Link
+        to="/admin"
+        className="admin-fab"
+        aria-label="관리자 페이지로 이동"
+      >
+        <Settings size={18} />
+      </Link>
     </main>
   );
 }

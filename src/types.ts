@@ -22,4 +22,5 @@ export type DiaryEntry = {
   coverTone: 'night' | 'dawn' | 'warm' | 'forest';
   order: number;
   published: boolean;
+  icon?: string;
 };
