@@ -282,7 +282,7 @@ export default function ViewerPage() {
                 </div>
 
                 <div className="player-nav-zone">
-                  {prevEntry ? (
+                  {prevEntry && (
                     <button className="nav-card prev-card" onClick={handlePrev}>
                       <span className="nav-dir">이전 곡</span>
                       <div className="nav-info">
@@ -290,9 +290,9 @@ export default function ViewerPage() {
                         <strong>{prevEntry.title}</strong>
                       </div>
                     </button>
-                  ) : <div className="nav-card empty-card" />}
+                  )}
                   
-                  {nextEntry ? (
+                  {nextEntry && (
                     <button className="nav-card next-card" onClick={handleNext}>
                       <span className="nav-dir">다음 곡</span>
                       <div className="nav-info">
@@ -300,7 +300,7 @@ export default function ViewerPage() {
                         <strong>{nextEntry.title}</strong>
                       </div>
                     </button>
-                  ) : <div className="nav-card empty-card" />}
+                  )}
                 </div>
 
                 <div className="reading-scroll">

@@ -75,7 +75,7 @@ export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded 
         }}
       />
       <button className="play-button" onClick={toggle} disabled={!resolvedSrc} aria-label={playing ? '일시정지' : '재생'}>
-        {playing ? <Pause size={18} /> : <Play size={18} fill="currentColor" />}
+        {playing ? <Pause size={14} /> : <Play size={14} fill="currentColor" />}
       </button>
       <div className="player-main inline-player-main">
         {!resolvedSrc ? (
