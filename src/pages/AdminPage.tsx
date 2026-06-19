@@ -424,8 +424,18 @@ export default function AdminPage() {
             />
 
             <div className="tap-current-line">
-              <span className="tap-line-label">현재 줄 ({tapStep + 1} / {nonEmptyTapLines.length})</span>
-              <strong className="tap-line-text">{nonEmptyTapLines[tapStep] || '(끝)'}</strong>
+              <span className="tap-line-label" style={{ color: '#8892a5', letterSpacing: 0 }}>방금 지나간 줄</span>
+              <div style={{ color: '#a0a8b8', fontSize: 14, marginBottom: 14, fontWeight: 500 }}>
+                {tapStep > 0 ? nonEmptyTapLines[tapStep - 1] : '...'}
+              </div>
+
+              <span className="tap-line-label" style={{ color: '#d76072' }}>다음 탭 대기 중 ({tapStep + 1} / {nonEmptyTapLines.length})</span>
+              <strong className="tap-line-text" style={{ fontSize: 22, color: '#2a2221' }}>
+                {nonEmptyTapLines[tapStep] || '(끝)'}
+              </strong>
+              <div style={{ fontSize: 12.5, color: '#c16f7b', marginTop: 8, fontWeight: 650 }}>
+                ↑ 이 가사가 들리기 시작하는 순간 탭하세요!
+              </div>
             </div>
 
             <div className="tap-progress">
