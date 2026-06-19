@@ -188,6 +188,31 @@ export async function migrateLocalToSupabase(): Promise<void> {
   const localBook = loadLocalBook();
   const localEntries = loadLocalEntries();
 
+  const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  
+  let needsLocalUpdate = false;
+  
+  if (!isUUID(localBook.id)) {
+    localBook.id = crypto.randomUUID();
+    needsLocalUpdate = true;
+  }
+  
+  for (const entry of localEntries) {
+    if (!isUUID(entry.id)) {
+      entry.id = crypto.randomUUID();
+      needsLocalUpdate = true;
+    }
+    if (entry.bookId !== localBook.id) {
+      entry.bookId = localBook.id;
+      needsLocalUpdate = true;
+    }
+  }
+
+  if (needsLocalUpdate) {
+    saveLocalBook(localBook);
+    saveLocalEntries(localEntries);
+  }
+
   // 1. 책 정보 옮기기
   await saveBook(localBook);
 
