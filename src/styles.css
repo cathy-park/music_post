@@ -903,7 +903,7 @@ textarea { resize: vertical; line-height: 1.6; }
     overflow: hidden;
   }
 
-  /* 아코디언: max-height 제한으로 가사 영역 보호 */
+  /* 아코디언: 3.5개 분량(216px)으로 max-height 제한하여 가사 영역 보호 */
   .playlist-panel {
     display: none;
     padding: 8px;
@@ -913,7 +913,7 @@ textarea { resize: vertical; line-height: 1.6; }
   }
   .playlist-panel.drawer-open {
     display: block;
-    max-height: 45vh;
+    max-height: 216px;
     overflow-y: auto;
     animation: slideDown 0.22s ease;
   }
