@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/v/:token", "destination": "/api/share?token=:token" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
