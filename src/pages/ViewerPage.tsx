@@ -332,7 +332,7 @@ export default function ViewerPage() {
                     </div>
                   </div>
 
-                  <section className="lyrics-card admin-card">
+                  <section className="lyrics-card">
                     <SyncedLyrics lines={syncData.lines} activeIdx={syncData.activeIdx} />
                   </section>
 
