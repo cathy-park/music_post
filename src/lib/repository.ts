@@ -140,6 +140,7 @@ export async function saveBook(book: DiaryBook): Promise<void> {
     sender_name: book.senderName,
     day_count: book.dayCount,
     cover_message: book.coverMessage,
+    share_token: book.shareToken,
     published: book.published,
   };
 
