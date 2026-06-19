@@ -145,6 +145,8 @@ export default function AdminPage() {
     setMessage('✅ LRC 타임스탬프가 적용됐어요! 저장 버튼을 눌러주세요.');
   }, [tapLines]);
 
+  const nonEmptyTapLines = useMemo(() => tapLines.filter(l => l.trim()), [tapLines]);
+
   /** 탭 → 타임스탬프 기록 */
   const handleTap = useCallback(() => {
     const t = audioRef.current?.currentTime ?? 0;
@@ -152,12 +154,12 @@ export default function AdminPage() {
     setTapTimestamps(next);
 
     // 모든 줄 완료
-    if (tapStep >= tapLines.length - 1) {
+    if (tapStep >= nonEmptyTapLines.length - 1) {
       applyTapTimestamps(next);
       return;
     }
     setTapStep((prev) => prev + 1);
-  }, [tapTimestamps, tapStep, tapLines, applyTapTimestamps]);
+  }, [tapTimestamps, tapStep, nonEmptyTapLines, applyTapTimestamps]);
 
   /** 이전 줄로 되돌리기 (Undo) */
   const handleUndo = useCallback(() => {
@@ -172,12 +174,7 @@ export default function AdminPage() {
     }
   }, [tapStep, tapTimestamps]);
 
-  /** 탭 모드에서 실제 가사 줄(비어있지 않은)의 인덱스 */
-  const currentNonEmptyIdx = useMemo(() => {
-    return tapLines.slice(0, tapStep + 1).filter(l => l.trim()).length - 1;
-  }, [tapLines, tapStep]);
 
-  const nonEmptyTapLines = useMemo(() => tapLines.filter(l => l.trim()), [tapLines]);
 
   const saveCurrentEntry = async () => {
     if (!selected) return;
@@ -406,15 +403,15 @@ export default function AdminPage() {
             />
 
             <div className="tap-current-line">
-              <span className="tap-line-label">현재 줄 ({tapStep + 1} / {tapLines.length})</span>
-              <strong className="tap-line-text">{tapLines[tapStep] || '(빈 줄)'}</strong>
+              <span className="tap-line-label">현재 줄 ({tapStep + 1} / {nonEmptyTapLines.length})</span>
+              <strong className="tap-line-text">{nonEmptyTapLines[tapStep] || '(끝)'}</strong>
             </div>
 
             <div className="tap-progress">
               {nonEmptyTapLines.map((line, i) => (
                 <span
                   key={i}
-                  className={`tap-pill${i < currentNonEmptyIdx ? ' done' : i === currentNonEmptyIdx ? ' active' : ''}`}
+                  className={`tap-pill${i < tapStep ? ' done' : i === tapStep ? ' active' : ''}`}
                 >
                   {line.length > 14 ? line.slice(0, 14) + '…' : line}
                 </span>
@@ -434,7 +431,7 @@ export default function AdminPage() {
                 ↩ 되돌리기
               </button>
               <button className="tap-button" onClick={handleTap}>
-                {tapStep >= tapLines.length - 1 ? '✅ 완료' : '🎵 다음 줄 탭'}
+                {tapStep >= nonEmptyTapLines.length - 1 ? '✅ 완료' : '🎵 다음 줄 탭'}
               </button>
             </div>
           </div>
