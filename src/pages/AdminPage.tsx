@@ -2,7 +2,7 @@ import { Check, Copy, Lock, LogIn, Music, Plus, Radio, Save, Trash2, UploadCloud
 import { FormEvent, useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { resolveAudioUrl } from '../lib/idb';
 import { isSupabaseReady, supabase } from '../lib/supabase';
-import { deleteEntry, getAdminData, saveBook, saveEntry } from '../lib/repository';
+import { deleteEntry, getAdminData, saveBook, saveEntry, migrateLocalToSupabase } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
 
 /** 기준일: 2025-05-30 = DAY 1 */
@@ -47,6 +47,7 @@ export default function AdminPage() {
   const [selectedId, setSelectedId] = useState('');
   const [audioFile, setAudioFile] = useState<File>();
   const [message, setMessage] = useState('');
+  const [isMigrating, setIsMigrating] = useState(false);
   const [email, setEmail] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -213,6 +214,23 @@ export default function AdminPage() {
     setMessage('삭제했어요.');
   };
 
+  const handleMigrate = async () => {
+    if (!window.confirm('브라우저에 저장된 노래일기와 오디오 파일들을 모두 수파베이스에 업로드합니다. 진행할까요?')) return;
+    setIsMigrating(true);
+    setMessage('업로드 중입니다. 잠시만 기다려주세요...');
+    try {
+      await migrateLocalToSupabase();
+      const data = await getAdminData();
+      setBook(data.book);
+      setEntries(data.entries);
+      setMessage('✅ 수파베이스로 데이터 이전을 완료했습니다!');
+    } catch (err) {
+      setMessage(`오류 발생: ${(err as Error).message}`);
+    } finally {
+      setIsMigrating(false);
+    }
+  };
+
   if (needsLogin) {
     return (
       <main className="admin-login">
@@ -274,6 +292,16 @@ export default function AdminPage() {
           <h1>음악일기 관리</h1>
         </div>
         <div className="admin-actions">
+          {isSupabaseReady && (
+            <button
+              className="ghost-button"
+              disabled={isMigrating}
+              onClick={handleMigrate}
+              title="로컬 데이터를 수파베이스로 안전하게 이전합니다."
+            >
+              <UploadCloud size={16} /> {isMigrating ? '업로드 중...' : '로컬 데이터 옮기기'}
+            </button>
+          )}
           <button
             className="ghost-button"
             onClick={async () => {

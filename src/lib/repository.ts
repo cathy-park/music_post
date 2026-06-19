@@ -1,7 +1,7 @@
 import type { DiaryBook, DiaryEntry } from '../types';
 import { loadLocalBook, loadLocalEntries, saveLocalBook, saveLocalEntries } from './storage';
 import { isSupabaseReady, supabase } from './supabase';
-import { saveAudioToIdb } from './idb';
+import { getAudioFileFromIdb, saveAudioToIdb } from './idb';
 
 function mapBook(row: Record<string, unknown>): DiaryBook {
   return {
@@ -171,4 +171,26 @@ export async function deleteEntry(id: string): Promise<void> {
   }
   const { error } = await supabase.from('diary_entries').delete().eq('id', id);
   if (error) throw error;
+}
+
+export async function migrateLocalToSupabase(): Promise<void> {
+  if (!isSupabaseReady || !supabase) throw new Error('Supabase is not connected');
+
+  const localBook = loadLocalBook();
+  const localEntries = loadLocalEntries();
+
+  // 1. 책 정보 옮기기
+  await saveBook(localBook);
+
+  // 2. 일기 정보 및 오디오 파일 옮기기
+  for (const entry of localEntries) {
+    let audioFile: File | undefined;
+    if (entry.audioUrl && entry.audioUrl.startsWith('idb://')) {
+      const file = await getAudioFileFromIdb(entry.audioUrl);
+      if (file) {
+        audioFile = file;
+      }
+    }
+    await saveEntry(entry, audioFile);
+  }
 }

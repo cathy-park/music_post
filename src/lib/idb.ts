@@ -33,17 +33,21 @@ export async function saveAudioToIdb(key: string, file: File): Promise<string> {
 
 /** `idb://key` URL을 Blob Object URL로 변환합니다. 일반 URL은 그대로 반환합니다. */
 export async function resolveAudioUrl(url: string): Promise<string> {
-  if (!url || !url.startsWith('idb://')) return url;
+  const file = await getAudioFileFromIdb(url);
+  if (!file) return url.startsWith('idb://') ? '' : url;
+  return URL.createObjectURL(file);
+}
+
+export async function getAudioFileFromIdb(url: string): Promise<File | undefined> {
+  if (!url || !url.startsWith('idb://')) return undefined;
   const key = url.slice(6);
   const db = await openDB();
-  const file = await new Promise<File | undefined>((resolve, reject) => {
+  return new Promise<File | undefined>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readonly');
     const req = tx.objectStore(STORE).get(key);
     req.onsuccess = () => resolve(req.result as File | undefined);
     req.onerror = () => reject(req.error);
   });
-  if (!file) return '';
-  return URL.createObjectURL(file);
 }
 
 /** IndexedDB에서 오디오 파일을 삭제합니다. */
