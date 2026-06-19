@@ -126,7 +126,8 @@ export default function ViewerPage() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [activeId, setActiveId] = useState('');
   const [error, setError] = useState('');
-  const [playlistOpen, setPlaylistOpen] = useState(false);
+  // 모바일에서는 플레이리스트 아코디언이 기본으로 열려 있도록 설정
+  const [playlistOpen, setPlaylistOpen] = useState(window.innerWidth <= 720);
   const [audioProgress, setAudioProgress] = useState({ current: 0, duration: 0 });
 
   const activeEntry = useMemo(
@@ -150,12 +151,17 @@ export default function ViewerPage() {
       .catch((err: Error) => setError(err.message));
   }, [token]);
 
+  // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정
+  useEffect(() => {
+    if (book) {
+      document.title = book.title || '나의 음악일기';
+    }
+  }, [book]);
+
   // 곡이 바뀌면 진행도 초기화
   useEffect(() => {
     setAudioProgress({ current: 0, duration: 0 });
   }, [activeId]);
-
-
 
   const handleProgress = useCallback((current: number, duration: number) => {
     setAudioProgress({ current, duration });
@@ -191,7 +197,7 @@ export default function ViewerPage() {
               <div className="drawer-toggle-info">
                 <span className="drawer-label">PLAYLIST</span>
                 <span className="drawer-active-title">
-                  {activeEntry ? activeEntry.icon || '🎵' : ''} {activeEntry?.title ?? '재생 목록'}
+                  {book?.title ?? '재생 목록'}
                 </span>
               </div>
             </div>
@@ -259,33 +265,35 @@ export default function ViewerPage() {
                 </div>
 
                 <div className="reading-scroll">
-                  {activeEntry.lyrics.trim() && (
-                    <div className="current-lyric-banner">
-                      {(() => {
-                        const { lines, activeIdx } = syncData;
-                        
-                        if (activeIdx < 0) {
-                          const firstLine = lines.find(l => l.trim());
-                          if (firstLine) {
-                            return <p className="lyric-pop" style={{ opacity: 0.35, transform: 'none', animation: 'none' }}>{firstLine}</p>;
+                  <div className="sticky-lyric-header">
+                    {activeEntry.lyrics.trim() && (
+                      <div className="current-lyric-banner">
+                        {(() => {
+                          const { lines, activeIdx } = syncData;
+                          
+                          if (activeIdx < 0) {
+                            const firstLine = lines.find(l => l.trim());
+                            if (firstLine) {
+                              return <p className="lyric-pop" style={{ opacity: 0.35, transform: 'none', animation: 'none' }}>{firstLine}</p>;
+                            }
+                            return <p style={{ opacity: 0.3 }}>🎵</p>;
+                          }
+
+                          const activeLine = lines[activeIdx]?.trim();
+                          if (activeLine) {
+                            return <p key={activeIdx} className="lyric-pop">{activeLine}</p>;
                           }
                           return <p style={{ opacity: 0.3 }}>🎵</p>;
-                        }
-
-                        const activeLine = lines[activeIdx]?.trim();
-                        if (activeLine) {
-                          return <p key={activeIdx} className="lyric-pop">{activeLine}</p>;
-                        }
-                        return <p style={{ opacity: 0.3 }}>🎵</p>;
-                      })()}
-                    </div>
-                  )}
-
-                  <section className="lyrics-card">
-                    <div className="content-card-heading">
+                        })()}
+                      </div>
+                    )}
+                    <div className="content-card-heading sticky-title">
                       <span>가사</span>
                       <small>LYRICS</small>
                     </div>
+                  </div>
+
+                  <section className="lyrics-card admin-card">
                     <SyncedLyrics lines={syncData.lines} activeIdx={syncData.activeIdx} />
                   </section>
 

@@ -64,8 +64,9 @@ export default function AdminPage() {
       const data = await getAdminData();
       setBooks(data.books);
       setEntries(data.entries);
-      if (!selectedId && data.entries.length > 0) {
-        setSelectedId(data.entries[0].id);
+      // 초기 진입 시에는 아무 항목도 선택되지 않도록 합니다.
+      if (!selectedId) {
+        setSelectedId('');
       }
     } catch (error) {
       setMessage((error as Error).message);
@@ -279,6 +280,15 @@ export default function AdminPage() {
 
   const activeBook = books.find(b => b.id === activeBookId);
   const activeEntries = activeBookId === '' ? entries : entries.filter(e => e.bookId === activeBookId);
+
+  // 브라우저 탭(문서) 제목 동적 설정
+  useEffect(() => {
+    if (activeBook?.title) {
+      document.title = `${activeBook.title} - 관리자`;
+    } else {
+      document.title = '음악일기 관리';
+    }
+  }, [activeBook?.title]);
 
   if (books.length === 0) return <main className="center-state"><div className="loader" /></main>;
 

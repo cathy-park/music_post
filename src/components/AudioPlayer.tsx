@@ -71,25 +71,27 @@ export default function AudioPlayer({ src, title, onProgress }: Props) {
       <button className="play-button" onClick={toggle} disabled={!resolvedSrc} aria-label={playing ? '일시정지' : '재생'}>
         {playing ? <Pause size={22} /> : <Play size={22} fill="currentColor" />}
       </button>
-      <div className="player-main">
-        <div className="player-topline">
-          <strong>{!resolvedSrc && '음원 준비 중'}</strong>
-          <span>{formatTime(current)} / {formatTime(duration)}</span>
-        </div>
-        <input
-          className="progress"
-          type="range"
-          min={0}
-          max={duration || 1}
-          step={0.01}
-          value={current}
-          disabled={!resolvedSrc}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            setCurrent(next);
-            if (ref.current) ref.current.currentTime = next;
-          }}
-        />
+      <div className="player-main inline-player-main">
+        {!resolvedSrc ? (
+          <span className="player-status">음원 준비 중</span>
+        ) : (
+          <>
+            <input
+              className="progress"
+              type="range"
+              min={0}
+              max={duration || 1}
+              step={0.01}
+              value={current}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setCurrent(next);
+                if (ref.current) ref.current.currentTime = next;
+              }}
+            />
+            <span className="player-time">{formatTime(current)} / {formatTime(duration)}</span>
+          </>
+        )}
       </div>
       <Volume2 size={18} className="volume-icon" />
     </div>
