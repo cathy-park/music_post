@@ -76,6 +76,7 @@ export async function getAdminData(): Promise<{ books: DiaryBook[]; entries: Dia
       .from('diary_books')
       .insert({
         share_token: Math.random().toString(36).substring(2, 8),
+        published: true,
       })
       .select('*')
       .single();
@@ -104,6 +105,7 @@ export async function createBook(title: string): Promise<DiaryBook> {
   const payload = {
     title,
     share_token: Math.random().toString(36).substring(2, 8),
+    published: true,
   };
   
   const { data, error } = await supabase
