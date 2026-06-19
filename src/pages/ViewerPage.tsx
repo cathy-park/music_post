@@ -248,11 +248,6 @@ export default function ViewerPage() {
                 />
               ))}
             </div>
-
-            <div className="playlist-note">
-              <LockKeyhole size={12} />
-              링크를 받은 사람만 볼 수 있어요
-            </div>
           </aside>
 
           <section className="detail-panel">
