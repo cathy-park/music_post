@@ -378,8 +378,7 @@ export default function AdminPage() {
 
               <div className="form-grid two">
                 <label>곡 제목<input value={selected.title} onChange={(e) => updateSelected({ title: e.target.value })} /></label>
-                <label>부제<input value={selected.subtitle} onChange={(e) => updateSelected({ subtitle: e.target.value })} /></label>
-                <label style={{ gridColumn: '1 / -1' }}>카테고리(재생목록) 선택
+                <label>카테고리(재생목록) 선택
                   <select value={selected.bookId} onChange={(e) => updateSelected({ bookId: e.target.value })}>
                     {books.map(b => (
                       <option key={b.id} value={b.id}>{b.title || '제목 없음'}</option>
