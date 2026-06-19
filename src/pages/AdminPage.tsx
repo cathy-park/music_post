@@ -426,14 +426,7 @@ export default function AdminPage() {
                   </div>
                   <small className="emoji-hint">토스페이스 이모지를 붙여넣거나 직접 입력하세요</small>
                 </label>
-                <label>커버 분위기
-                  <select value={selected.coverTone} onChange={(e) => updateSelected({ coverTone: e.target.value as DiaryEntry['coverTone'] })}>
-                    <option value="night">별이 많은 밤</option>
-                    <option value="dawn">푸른 새벽</option>
-                    <option value="warm">따뜻한 방</option>
-                    <option value="forest">고요한 숲</option>
-                  </select>
-                </label>
+
                 <label className="toggle-label"><input type="checkbox" checked={selected.published} onChange={(e) => updateSelected({ published: e.target.checked })} /> 뷰어에 공개</label>
               </div>
 
