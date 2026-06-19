@@ -61,28 +61,35 @@ export async function getAdminData(): Promise<{ book: DiaryBook; entries: DiaryE
     return { book: loadLocalBook(), entries: loadLocalEntries() };
   }
 
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error('로그인이 필요합니다.');
-
   const { data: bookRow, error: bookError } = await supabase
     .from('diary_books')
     .select('*')
-    .eq('owner_id', userData.user.id)
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
+  
   if (bookError) throw bookError;
-  if (!bookRow) throw new Error('먼저 Supabase에서 기본 책 레코드를 만들어주세요.');
+
+  let finalBookRow = bookRow;
+  if (!finalBookRow) {
+    const { data: newRow, error: insErr } = await supabase
+      .from('diary_books')
+      .insert({})
+      .select('*')
+      .single();
+    if (insErr) throw insErr;
+    finalBookRow = newRow;
+  }
 
   const { data: entryRows, error: entriesError } = await supabase
     .from('diary_entries')
     .select('*')
-    .eq('book_id', bookRow.id)
+    .eq('book_id', finalBookRow.id)
     .order('sort_order', { ascending: true });
   if (entriesError) throw entriesError;
 
   return {
-    book: mapBook(bookRow),
+    book: mapBook(finalBookRow),
     entries: (entryRows ?? []).map(mapEntry),
   };
 }
@@ -93,18 +100,20 @@ export async function saveBook(book: DiaryBook): Promise<void> {
     return;
   }
 
+  const payload = {
+    id: book.id,
+    title: book.title,
+    subtitle: book.subtitle,
+    recipient_name: book.recipientName,
+    sender_name: book.senderName,
+    day_count: book.dayCount,
+    cover_message: book.coverMessage,
+    published: book.published,
+  };
+
   const { error } = await supabase
     .from('diary_books')
-    .update({
-      title: book.title,
-      subtitle: book.subtitle,
-      recipient_name: book.recipientName,
-      sender_name: book.senderName,
-      day_count: book.dayCount,
-      cover_message: book.coverMessage,
-      published: book.published,
-    })
-    .eq('id', book.id);
+    .upsert(payload);
   if (error) throw error;
 }
 

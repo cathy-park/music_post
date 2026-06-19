@@ -48,8 +48,7 @@ export default function AdminPage() {
   const [audioFile, setAudioFile] = useState<File>();
   const [message, setMessage] = useState('');
   const [isMigrating, setIsMigrating] = useState(false);
-  const [email, setEmail] = useState('');
-  const [needsLogin, setNeedsLogin] = useState(false);
+
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [tapMode, setTapMode] = useState(false);
@@ -66,10 +65,8 @@ export default function AdminPage() {
       setBook(data.book);
       setEntries(data.entries);
       setSelectedId(data.entries[0]?.id ?? '');
-      setNeedsLogin(false);
     } catch (error) {
-      if (isSupabaseReady) setNeedsLogin(true);
-      else setMessage((error as Error).message);
+      setMessage((error as Error).message);
     }
   };
 
@@ -93,15 +90,7 @@ export default function AdminPage() {
   }, [tapMode, selected]);
 
 
-  const handleMagicLink = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!supabase) return;
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/admin` },
-    });
-    setMessage(error ? error.message : '로그인 링크를 이메일로 보냈어요.');
-  };
+
 
   /** 탭 모드 시작 */
   const startTapMode = useCallback(async () => {
@@ -231,22 +220,7 @@ export default function AdminPage() {
     }
   };
 
-  if (needsLogin) {
-    return (
-      <main className="admin-login">
-        <div className="admin-login-card">
-          <LogIn size={28} />
-          <h1>관리자 로그인</h1>
-          <p>등록한 관리자 이메일로 일회용 로그인 링크를 받아요.</p>
-          <form onSubmit={handleMagicLink}>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@example.com" required />
-            <button className="primary-button" type="submit">로그인 링크 받기</button>
-          </form>
-          {message && <p className="status-message">{message}</p>}
-        </div>
-      </main>
-    );
-  }
+
 
   if (!isUnlocked) {
     return (
