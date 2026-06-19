@@ -231,7 +231,7 @@ export default function ViewerPage() {
               <div className="playlist-sticker"><Music2 size={18} /></div>
               <div className="playlist-heading-copy">
                 <span>PLAYLIST</span>
-                <h2>우리의 장면들</h2>
+                <h2>{book?.title || '재생 목록'}</h2>
               </div>
               <strong className="playlist-count">{entries.length}곡</strong>
             </div>
