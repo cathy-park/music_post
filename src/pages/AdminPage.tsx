@@ -125,6 +125,26 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tapMode, tapStep, tapLines]);
 
+  /** 기록된 타임스탬프를 가사에 적용하고 모달 닫기 */
+  const applyTapTimestamps = useCallback((timestamps: number[]) => {
+    let tIdx = 0;
+    const lrc = tapLines.map((line) => {
+      // 이미 존재하는 타임코드 제거 (중복 방지)
+      const plainLine = line.replace(/^\[\d+:\d+(?:\.\d+)?\]\s*/, '');
+      if (!plainLine.trim()) return ''; // 빈 줄 유지
+      if (tIdx >= timestamps.length) return plainLine; // 타임스탬프 없으면 일반 가사로
+
+      const time = timestamps[tIdx++];
+      const mm = String(Math.floor(time / 60)).padStart(2, '0');
+      const ss = (time % 60).toFixed(2).padStart(5, '0');
+      return `[${mm}:${ss}] ${plainLine}`;
+    }).join('\n');
+
+    updateSelected({ lyrics: lrc });
+    setTapMode(false);
+    setMessage('✅ LRC 타임스탬프가 적용됐어요! 저장 버튼을 눌러주세요.');
+  }, [tapLines]);
+
   /** 탭 → 타임스탬프 기록 */
   const handleTap = useCallback(() => {
     const t = audioRef.current?.currentTime ?? 0;
@@ -133,22 +153,24 @@ export default function AdminPage() {
 
     // 모든 줄 완료
     if (tapStep >= tapLines.length - 1) {
-      // LRC 생성: 빈 줄은 타임스탬프 없이 그대로, 나머지는 [mm:ss.xx]
-      let tIdx = 0;
-      const lrc = tapLines.map((line) => {
-        if (!line.trim()) return '';
-        const time = next[tIdx++] ?? 0;
-        const mm = String(Math.floor(time / 60)).padStart(2, '0');
-        const ss = (time % 60).toFixed(2).padStart(5, '0');
-        return `[${mm}:${ss}]${line}`;
-      }).join('\n');
-      updateSelected({ lyrics: lrc });
-      setTapMode(false);
-      setMessage('✅ LRC 타임스탬프가 생성됐어요! 저장 버튼을 눌러주세요.');
+      applyTapTimestamps(next);
       return;
     }
     setTapStep((prev) => prev + 1);
-  }, [tapTimestamps, tapStep, tapLines]);
+  }, [tapTimestamps, tapStep, tapLines, applyTapTimestamps]);
+
+  /** 이전 줄로 되돌리기 (Undo) */
+  const handleUndo = useCallback(() => {
+    if (tapStep === 0 || tapTimestamps.length === 0) return;
+    const nextTimestamps = tapTimestamps.slice(0, -1);
+    setTapTimestamps(nextTimestamps);
+    setTapStep((prev) => prev - 1);
+
+    // 오디오 재생 위치도 이전 타임스탬프(또는 0)로 되돌림
+    if (audioRef.current) {
+      audioRef.current.currentTime = nextTimestamps.length > 0 ? nextTimestamps[nextTimestamps.length - 1] : 0;
+    }
+  }, [tapStep, tapTimestamps]);
 
   /** 탭 모드에서 실제 가사 줄(비어있지 않은)의 인덱스 */
   const currentNonEmptyIdx = useMemo(() => {
@@ -400,9 +422,19 @@ export default function AdminPage() {
             </div>
 
             <div className="tap-actions">
-              <button className="danger-button" onClick={() => setTapMode(false)}>취소</button>
+              {tapTimestamps.length > 0 ? (
+                <button className="ghost-button" onClick={() => applyTapTimestamps(tapTimestamps)} style={{ marginRight: 'auto' }}>
+                  지금까지 저장
+                </button>
+              ) : (
+                <button className="danger-button" onClick={() => setTapMode(false)} style={{ marginRight: 'auto' }}>취소</button>
+              )}
+              
+              <button className="ghost-button" onClick={handleUndo} disabled={tapStep === 0}>
+                ↩ 되돌리기
+              </button>
               <button className="tap-button" onClick={handleTap}>
-                {tapStep >= tapLines.length - 1 ? '✅ 완료' : '🎵 다음 줄'}
+                {tapStep >= tapLines.length - 1 ? '✅ 완료' : '🎵 다음 줄 탭'}
               </button>
             </div>
           </div>
