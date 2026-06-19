@@ -365,20 +365,25 @@ a { color: inherit; text-decoration: none; }
   appearance: none;
   background: transparent;
   height: 4px;
+  border: none;
+  outline: none;
+  padding: 0;
 }
 .progress::-webkit-slider-runnable-track {
   width: 100%;
   height: 4px;
-  background: rgba(223, 113, 131, 0.15);
+  background: rgba(223, 113, 131, 0.18);
   border-radius: 2px;
   border: none;
+  outline: none;
 }
 .progress::-moz-range-track {
   width: 100%;
   height: 4px;
-  background: rgba(223, 113, 131, 0.15);
+  background: rgba(223, 113, 131, 0.18);
   border-radius: 2px;
   border: none;
+  outline: none;
 }
 .progress::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -390,6 +395,7 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer;
   margin-top: -3px;
   border: none;
+  outline: none;
 }
 .progress::-moz-range-thumb {
   width: 10px;
@@ -398,6 +404,7 @@ a { color: inherit; text-decoration: none; }
   background: #df7183;
   cursor: pointer;
   border: none;
+  outline: none;
 }
 .volume-icon { color: #9c88d6; }
 .empty-audio {
@@ -813,7 +820,18 @@ textarea { resize: vertical; line-height: 1.6; }
 }
 
 @media (max-width: 720px) {
-  .viewer-page { min-height: 620px; padding: 8px; }
+  /* 핵심: 모바일에서 페이지를 스크롤 가능하게 전환 */
+  .viewer-page {
+    height: auto;
+    min-height: 100svh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px;
+  }
+  .viewer-shell {
+    height: auto;
+    min-height: 0;
+  }
   .viewer-header { min-height: 54px; align-items: center; padding: 0 3px 7px; }
   .viewer-header p { display: none; }
   .viewer-header h1 { font-size: 25px; }
@@ -875,6 +893,8 @@ textarea { resize: vertical; line-height: 1.6; }
   }
 
   .diary-board {
+    flex: none;
+    height: auto;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -883,15 +903,17 @@ textarea { resize: vertical; line-height: 1.6; }
     overflow: visible;
   }
 
-  /* 플레이리스트 패널: 모바일 스크롤 제거, 모두 표시 */
+  /* 플레이리스트 패널: 높이 자동, overflow 해제 */
   .playlist-panel {
     display: none;
     padding: 8px;
     border-radius: 17px;
     overflow: visible;
+    height: auto;
   }
   .playlist-panel.drawer-open {
     display: block;
+    height: auto;
     animation: slideDown 0.22s ease;
     overflow: visible;
   }
@@ -923,7 +945,15 @@ textarea { resize: vertical; line-height: 1.6; }
   .entry-copy small { font-size: 9px; }
   .entry-day { font-size: 7px; }
   .playlist-note { display: none; }
-  .detail-panel { gap: 7px; padding: 10px; border-radius: 17px; }
+  .detail-panel {
+    flex: none;
+    height: auto;
+    gap: 7px;
+    padding: 10px;
+    border-radius: 17px;
+    overflow: visible;
+    grid-template-rows: none;
+  }
   .song-heading { gap: 10px; }
   .song-heading h2 { margin-top: 4px; font-size: 21px; }
   .song-heading p { font-size: 9px; }
@@ -936,7 +966,12 @@ textarea { resize: vertical; line-height: 1.6; }
   .player-topline strong { font-size: 10px; }
   .player-topline span { font-size: 7px; }
   .empty-audio { min-height: 48px; padding: 8px 10px; border-radius: 13px; font-size: 9px; }
-  .reading-scroll { padding-right: 2px; }
+  .reading-scroll {
+    padding-right: 2px;
+    flex: none;
+    height: auto;
+    overflow: visible;
+  }
   .lyrics-card { padding: 10px 11px 12px; border-radius: 14px; }
   .content-card-heading { padding-bottom: 6px; }
   .lyrics { padding-top: 8px; font-size: 10.7px; line-height: 1.7; }

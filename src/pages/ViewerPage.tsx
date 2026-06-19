@@ -1,4 +1,4 @@
-import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp, Quote } from 'lucide-react';
+import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import AudioPlayer from '../components/AudioPlayer';
@@ -335,11 +335,6 @@ export default function ViewerPage() {
                   <section className="lyrics-card">
                     <SyncedLyrics lines={syncData.lines} activeIdx={syncData.activeIdx} />
                   </section>
-                </div>
-
-                <div className="detail-footnote">
-                  <Quote size={11} />
-                  <span>말로 다 못한 나의 이야기와 기록들은 가사 사이사이에 남겼어</span>
                 </div>
               </>
             ) : (
