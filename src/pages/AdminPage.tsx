@@ -2,7 +2,7 @@ import { Check, Copy, Lock, LogIn, Music, Plus, Radio, Save, Trash2, UploadCloud
 import { FormEvent, useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { resolveAudioUrl } from '../lib/idb';
 import { isSupabaseReady, supabase } from '../lib/supabase';
-import { deleteEntry, getAdminData, saveBook, saveEntry, migrateLocalToSupabase } from '../lib/repository';
+import { deleteEntry, getAdminData, saveBook, saveEntry, createBook, deleteBook } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
 
 /** 기준일: 2025-05-30 = DAY 1 */
@@ -42,12 +42,12 @@ const emptyEntry = (bookId: string, order: number): DiaryEntry => ({
 });
 
 export default function AdminPage() {
-  const [book, setBook] = useState<DiaryBook | null>(null);
+  const [books, setBooks] = useState<DiaryBook[]>([]);
+  const [activeBookId, setActiveBookId] = useState('');
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [audioFile, setAudioFile] = useState<File>();
   const [message, setMessage] = useState('');
-  const [isMigrating, setIsMigrating] = useState(false);
 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -62,9 +62,14 @@ export default function AdminPage() {
   const load = async () => {
     try {
       const data = await getAdminData();
-      setBook(data.book);
+      setBooks(data.books);
       setEntries(data.entries);
-      setSelectedId(data.entries[0]?.id ?? '');
+      if (data.books.length > 0 && !activeBookId) {
+        setActiveBookId(data.books[0].id);
+      }
+      if (!selectedId && data.entries.length > 0) {
+        setSelectedId(data.entries[0].id);
+      }
     } catch (error) {
       setMessage((error as Error).message);
     }
@@ -203,20 +208,41 @@ export default function AdminPage() {
     setMessage('삭제했어요.');
   };
 
-  const handleMigrate = async () => {
-    if (!window.confirm('브라우저에 저장된 노래일기와 오디오 파일들을 모두 수파베이스에 업로드합니다. 진행할까요?')) return;
-    setIsMigrating(true);
-    setMessage('업로드 중입니다. 잠시만 기다려주세요...');
+  const handleAddCategory = async () => {
+    const title = window.prompt('새로운 재생목록(카테고리) 이름을 입력해주세요:', '새 카테고리');
+    if (!title) return;
     try {
-      await migrateLocalToSupabase();
-      const data = await getAdminData();
-      setBook(data.book);
-      setEntries(data.entries);
-      setMessage('✅ 수파베이스로 데이터 이전을 완료했습니다!');
+      const newBook = await createBook(title);
+      setBooks([...books, newBook]);
+      setActiveBookId(newBook.id);
+      setMessage(`'${title}' 카테고리를 만들었어요.`);
     } catch (err) {
-      setMessage(`오류 발생: ${(err as Error).message}`);
-    } finally {
-      setIsMigrating(false);
+      setMessage((err as Error).message);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!activeBook) return;
+    if (!window.confirm(`'${activeBook.title}' 카테고리를 정말 삭제할까요? 안에 있는 노래도 모두 삭제됩니다.`)) return;
+    try {
+      await deleteBook(activeBook.id);
+      const nextBooks = books.filter(b => b.id !== activeBook.id);
+      setBooks(nextBooks);
+      if (nextBooks.length > 0) setActiveBookId(nextBooks[0].id);
+      setMessage('카테고리를 삭제했어요.');
+    } catch (err) {
+      setMessage((err as Error).message);
+    }
+  };
+
+  const handleUpdateCategoryName = async (newName: string) => {
+    if (!activeBook || !newName) return;
+    try {
+      const nextBook = { ...activeBook, title: newName };
+      await saveBook(nextBook);
+      setBooks(books.map(b => b.id === activeBook.id ? nextBook : b));
+    } catch (err) {
+      setMessage((err as Error).message);
     }
   };
 
@@ -254,9 +280,12 @@ export default function AdminPage() {
     );
   }
 
-  if (!book) return <main className="center-state"><div className="loader" /></main>;
+  const activeBook = books.find(b => b.id === activeBookId);
+  const activeEntries = entries.filter(e => e.bookId === activeBookId);
 
-  const shareUrl = `${window.location.origin}/v/${book.shareToken}`;
+  if (!activeBook && books.length === 0) return <main className="center-state"><div className="loader" /></main>;
+
+  const shareUrl = activeBook ? `${window.location.origin}/v/${activeBook.shareToken}` : '';
 
   return (
     <main className="admin-page">
@@ -266,26 +295,37 @@ export default function AdminPage() {
           <h1>음악일기 관리</h1>
         </div>
         <div className="admin-actions">
-          {isSupabaseReady && (
-            <button
-              className="ghost-button"
-              disabled={isMigrating}
-              onClick={handleMigrate}
-              title="로컬 데이터를 수파베이스로 안전하게 이전합니다."
-            >
-              <UploadCloud size={16} /> {isMigrating ? '업로드 중...' : '로컬 데이터 옮기기'}
-            </button>
+          {activeBook && (
+            <>
+              <button
+                className="ghost-button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(shareUrl);
+                  setMessage('이 카테고리의 뷰어 링크를 복사했어요.');
+                }}
+              ><Copy size={16} /> 링크 복사</button>
+              <a className="ghost-button" href={`/v/${activeBook.shareToken}`} target="_blank" rel="noreferrer">뷰어 열기</a>
+            </>
           )}
-          <button
-            className="ghost-button"
-            onClick={async () => {
-              await navigator.clipboard.writeText(shareUrl);
-              setMessage('뷰어 링크를 복사했어요.');
-            }}
-          ><Copy size={16} /> 링크 복사</button>
-          <a className="ghost-button" href={`/v/${book.shareToken}`} target="_blank" rel="noreferrer">뷰어 열기</a>
         </div>
       </header>
+
+      <div className="category-tabs">
+        {books.map(b => (
+          <button 
+            key={b.id} 
+            className={`category-chip ${b.id === activeBookId ? 'active' : ''}`}
+            onClick={() => setActiveBookId(b.id)}
+          >
+            {b.title || '제목 없음'}
+          </button>
+        ))}
+        {isSupabaseReady && (
+          <button className="category-chip add" onClick={handleAddCategory}>
+            <Plus size={14} /> 새 카테고리
+          </button>
+        )}
+      </div>
 
       {!isSupabaseReady && (
         <div className="demo-banner">
@@ -297,15 +337,22 @@ export default function AdminPage() {
       <section className="admin-workspace">
         <aside className="admin-list admin-card">
           <div className="card-title-row">
-            <h2>노래일기</h2>
-            <button className="icon-button" onClick={() => {
-              const next = emptyEntry(book.id, entries.length + 1);
-              setEntries([...entries, next]);
-              setSelectedId(next.id);
-            }} aria-label="노래일기 추가"><Plus size={18} /></button>
+            <h2>{activeBook?.title || '카테고리 이름 설정'} <button className="icon-button compact" onClick={() => {
+              const newTitle = window.prompt('카테고리 이름을 변경합니다:', activeBook?.title);
+              if (newTitle) handleUpdateCategoryName(newTitle);
+            }}><Music size={14}/></button></h2>
+            <div className="row-actions">
+              <button className="icon-button compact" onClick={handleDeleteCategory} title="카테고리 삭제"><Trash2 size={15} color="#d76072"/></button>
+              <button className="icon-button" onClick={() => {
+                if (!activeBook) return;
+                const next = emptyEntry(activeBook.id, activeEntries.length + 1);
+                setEntries([...entries, next]);
+                setSelectedId(next.id);
+              }} aria-label="노래일기 추가"><Plus size={18} /></button>
+            </div>
           </div>
           <div className="admin-entry-list">
-            {entries.map((entry) => (
+            {activeEntries.map((entry) => (
               <button key={entry.id} className={entry.id === selectedId ? 'active' : ''} onClick={() => setSelectedId(entry.id)}>
                 <span className="admin-entry-emoji">{entry.icon || '🎵'}</span>
                 <span><strong>{entry.title || '제목 없음'}</strong><small>{entry.published ? '공개' : '비공개'} · {entry.dateLabel}</small></span>

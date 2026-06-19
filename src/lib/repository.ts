@@ -56,42 +56,72 @@ export async function getViewerData(token: string): Promise<{ book: DiaryBook; e
   };
 }
 
-export async function getAdminData(): Promise<{ book: DiaryBook; entries: DiaryEntry[] }> {
+export async function getAdminData(): Promise<{ books: DiaryBook[]; entries: DiaryEntry[] }> {
   if (!isSupabaseReady || !supabase) {
-    return { book: loadLocalBook(), entries: loadLocalEntries() };
+    return { books: [loadLocalBook()], entries: loadLocalEntries() };
   }
 
-  const { data: bookRow, error: bookError } = await supabase
+  const { data: bookRows, error: bookError } = await supabase
     .from('diary_books')
     .select('*')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order('created_at', { ascending: true });
   
   if (bookError) throw bookError;
 
-  let finalBookRow = bookRow;
-  if (!finalBookRow) {
+  let finalBookRows = bookRows ?? [];
+  
+  // 만약 책이 하나도 없다면 하나 생성
+  if (finalBookRows.length === 0) {
     const { data: newRow, error: insErr } = await supabase
       .from('diary_books')
-      .insert({})
+      .insert({
+        share_token: Math.random().toString(36).substring(2, 8),
+      })
       .select('*')
       .single();
     if (insErr) throw insErr;
-    finalBookRow = newRow;
+    finalBookRows = [newRow];
   }
 
   const { data: entryRows, error: entriesError } = await supabase
     .from('diary_entries')
     .select('*')
-    .eq('book_id', finalBookRow.id)
     .order('sort_order', { ascending: true });
+    
   if (entriesError) throw entriesError;
 
   return {
-    book: mapBook(finalBookRow),
+    books: finalBookRows.map(mapBook),
     entries: (entryRows ?? []).map(mapEntry),
   };
+}
+
+export async function createBook(title: string): Promise<DiaryBook> {
+  if (!isSupabaseReady || !supabase) {
+    throw new Error('새 카테고리는 서버 연동 모드에서만 만들 수 있습니다.');
+  }
+  
+  const payload = {
+    title,
+    share_token: Math.random().toString(36).substring(2, 8),
+  };
+  
+  const { data, error } = await supabase
+    .from('diary_books')
+    .insert(payload)
+    .select('*')
+    .single();
+    
+  if (error) throw error;
+  return mapBook(data);
+}
+
+export async function deleteBook(id: string): Promise<void> {
+  if (!isSupabaseReady || !supabase) {
+    throw new Error('서버 연동 모드에서만 삭제할 수 있습니다.');
+  }
+  const { error } = await supabase.from('diary_books').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function saveBook(book: DiaryBook): Promise<void> {
@@ -182,65 +212,4 @@ export async function deleteEntry(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function migrateLocalToSupabase(): Promise<void> {
-  if (!isSupabaseReady || !supabase) throw new Error('Supabase is not connected');
 
-  const localBook = loadLocalBook();
-  const localEntries = loadLocalEntries();
-
-  // 수파베이스에 이미 책이 생성되어 있다면 해당 ID를 그대로 사용 (중복 방지)
-  const { data: existingBook } = await supabase
-    .from('diary_books')
-    .select('id')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
-  
-  let needsLocalUpdate = false;
-  
-  if (existingBook) {
-    if (localBook.id !== existingBook.id) {
-      localBook.id = existingBook.id;
-      needsLocalUpdate = true;
-    }
-  } else if (!isUUID(localBook.id)) {
-    localBook.id = crypto.randomUUID();
-    needsLocalUpdate = true;
-  }
-  
-  for (const entry of localEntries) {
-    if (!isUUID(entry.id)) {
-      entry.id = crypto.randomUUID();
-      needsLocalUpdate = true;
-    }
-    if (entry.bookId !== localBook.id) {
-      entry.bookId = localBook.id;
-      needsLocalUpdate = true;
-    }
-  }
-
-  if (needsLocalUpdate) {
-    saveLocalBook(localBook);
-    saveLocalEntries(localEntries);
-  }
-
-  // 기존 데이터 덮어쓰기 전 안전하게 비우기 (마이그레이션 중복 방지)
-  await supabase.from('diary_entries').delete().eq('book_id', localBook.id);
-
-  // 1. 책 정보 업데이트
-  await saveBook(localBook);
-
-  // 2. 일기 정보 및 오디오 파일 옮기기
-  for (const entry of localEntries) {
-    let audioFile: File | undefined;
-    if (entry.audioUrl && entry.audioUrl.startsWith('idb://')) {
-      const file = await getAudioFileFromIdb(entry.audioUrl);
-      if (file) {
-        audioFile = file;
-      }
-    }
-    await saveEntry(entry, audioFile);
-  }
-}
