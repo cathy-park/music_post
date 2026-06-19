@@ -20,7 +20,9 @@ function labelToDateStr(label: string): string {
   if (!match) return '';
   const dayNum = parseInt(match[1], 10);
   const d = new Date(BASE_DATE.getTime() + (dayNum - 1) * 24 * 60 * 60 * 1000);
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  // toISOString()은 UTC 기준이라 KST(+9)에서 하루 밀림 → 9시간 보정
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10); // YYYY-MM-DD (KST 기준)
 }
 
 const emptyEntry = (bookId: string, order: number): DiaryEntry => ({
