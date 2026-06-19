@@ -244,7 +244,6 @@ export default function ViewerPage() {
                   active={entry.id === activeEntry?.id}
                   onClick={() => {
                     setActiveId(entry.id);
-                    setPlaylistOpen(false);
                   }}
                 />
               ))}
