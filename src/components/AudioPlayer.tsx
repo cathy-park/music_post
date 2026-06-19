@@ -12,10 +12,12 @@ function formatTime(seconds: number): string {
 type Props = {
   src: string;
   title: string;
+  autoPlay?: boolean;
   onProgress?: (current: number, duration: number) => void;
+  onEnded?: () => void;
 };
 
-export default function AudioPlayer({ src, title, onProgress }: Props) {
+export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded }: Props) {
   const ref = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -53,9 +55,13 @@ export default function AudioPlayer({ src, title, onProgress }: Props) {
       <audio
         ref={ref}
         src={resolvedSrc || undefined}
+        autoPlay={autoPlay}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          onEnded?.();
+        }}
         onTimeUpdate={(event) => {
           const t = event.currentTarget.currentTime;
           const d = event.currentTarget.duration || 0;

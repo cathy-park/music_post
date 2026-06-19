@@ -126,9 +126,10 @@ export default function ViewerPage() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [activeId, setActiveId] = useState('');
   const [error, setError] = useState('');
-  // 모바일에서는 플레이리스트 아코디언이 기본으로 열려 있도록 설정
-  const [playlistOpen, setPlaylistOpen] = useState(window.innerWidth <= 720);
+  // 모바일에서는 플레이리스트 아코디언이 기본으로 열려 있도록 강제 설정
+  const [playlistOpen, setPlaylistOpen] = useState(true);
   const [audioProgress, setAudioProgress] = useState({ current: 0, duration: 0 });
+  const [autoPlayNext, setAutoPlayNext] = useState(false);
 
   const activeEntry = useMemo(
     () => entries.find((entry) => entry.id === activeId) ?? entries[0],
@@ -167,6 +168,24 @@ export default function ViewerPage() {
     setAudioProgress({ current, duration });
   }, []);
 
+  const currentIndex = entries.findIndex(e => e.id === activeId);
+  const prevEntry = currentIndex > 0 ? entries[currentIndex - 1] : null;
+  const nextEntry = currentIndex >= 0 && currentIndex < entries.length - 1 ? entries[currentIndex + 1] : null;
+
+  const handleNext = useCallback(() => {
+    if (nextEntry) {
+      setActiveId(nextEntry.id);
+      setAutoPlayNext(true);
+    }
+  }, [nextEntry]);
+
+  const handlePrev = useCallback(() => {
+    if (prevEntry) {
+      setActiveId(prevEntry.id);
+      setAutoPlayNext(true);
+    }
+  }, [prevEntry]);
+
   if (error) {
     return (
       <main className="center-state viewer-state">
@@ -197,7 +216,7 @@ export default function ViewerPage() {
               <div className="drawer-toggle-info">
                 <span className="drawer-label">PLAYLIST</span>
                 <span className="drawer-active-title">
-                  {book?.title ?? '재생 목록'}
+                  {book?.title ? `${book.title} 재생 목록` : '재생 목록'}
                 </span>
               </div>
             </div>
@@ -246,10 +265,6 @@ export default function ViewerPage() {
                     <h2>{activeEntry.title}</h2>
                     <p>{activeEntry.subtitle}</p>
                   </div>
-                  <div className="days-badge" aria-label={`${book.dayCount}일 기념`}>
-                    <strong>{book.dayCount}</strong>
-                    <span>DAYS</span>
-                  </div>
                 </div>
 
                 <div className="player-zone">
@@ -257,11 +272,35 @@ export default function ViewerPage() {
                     <AudioPlayer
                       src={activeEntry.audioUrl}
                       title={activeEntry.title}
+                      autoPlay={autoPlayNext}
                       onProgress={handleProgress}
+                      onEnded={handleNext}
                     />
                   ) : (
                     <EmptyAudio />
                   )}
+                </div>
+
+                <div className="player-nav-zone">
+                  {prevEntry ? (
+                    <button className="nav-card prev-card" onClick={handlePrev}>
+                      <span className="nav-dir">이전 곡</span>
+                      <div className="nav-info">
+                        <span className="day-pill outline">{prevEntry.dateLabel}</span>
+                        <strong>{prevEntry.title}</strong>
+                      </div>
+                    </button>
+                  ) : <div className="nav-card empty-card" />}
+                  
+                  {nextEntry ? (
+                    <button className="nav-card next-card" onClick={handleNext}>
+                      <span className="nav-dir">다음 곡</span>
+                      <div className="nav-info">
+                        <span className="day-pill outline">{nextEntry.dateLabel}</span>
+                        <strong>{nextEntry.title}</strong>
+                      </div>
+                    </button>
+                  ) : <div className="nav-card empty-card" />}
                 </div>
 
                 <div className="reading-scroll">
