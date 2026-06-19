@@ -64,9 +64,6 @@ export default function AdminPage() {
       const data = await getAdminData();
       setBooks(data.books);
       setEntries(data.entries);
-      if (data.books.length > 0 && !activeBookId) {
-        setActiveBookId(data.books[0].id);
-      }
       if (!selectedId && data.entries.length > 0) {
         setSelectedId(data.entries[0].id);
       }
@@ -281,9 +278,9 @@ export default function AdminPage() {
   }
 
   const activeBook = books.find(b => b.id === activeBookId);
-  const activeEntries = entries.filter(e => e.bookId === activeBookId);
+  const activeEntries = activeBookId === '' ? entries : entries.filter(e => e.bookId === activeBookId);
 
-  if (!activeBook && books.length === 0) return <main className="center-state"><div className="loader" /></main>;
+  if (books.length === 0) return <main className="center-state"><div className="loader" /></main>;
 
   const shareUrl = activeBook ? `${window.location.origin}/v/${activeBook.shareToken}` : '';
 
@@ -311,6 +308,12 @@ export default function AdminPage() {
       </header>
 
       <div className="category-tabs">
+        <button 
+          className={`category-chip ${activeBookId === '' ? 'active' : ''}`}
+          onClick={() => setActiveBookId('')}
+        >
+          모든 노래일기
+        </button>
         {books.map(b => (
           <button 
             key={b.id} 
@@ -337,15 +340,16 @@ export default function AdminPage() {
       <section className="admin-workspace">
         <aside className="admin-list admin-card">
           <div className="card-title-row">
-            <h2>{activeBook?.title || '카테고리 이름 설정'} <button className="icon-button compact" onClick={() => {
+            <h2>{activeBook ? activeBook.title || '카테고리 이름 설정' : '모든 노래일기'} 
+            {activeBook && <button className="icon-button compact" onClick={() => {
               const newTitle = window.prompt('카테고리 이름을 변경합니다:', activeBook?.title);
               if (newTitle) handleUpdateCategoryName(newTitle);
-            }}><Music size={14}/></button></h2>
+            }}><Music size={14}/></button>}</h2>
             <div className="row-actions">
-              <button className="icon-button compact" onClick={handleDeleteCategory} title="카테고리 삭제"><Trash2 size={15} color="#d76072"/></button>
+              {activeBook && <button className="icon-button compact" onClick={handleDeleteCategory} title="카테고리 삭제"><Trash2 size={15} color="#d76072"/></button>}
               <button className="icon-button" onClick={() => {
-                if (!activeBook) return;
-                const next = emptyEntry(activeBook.id, activeEntries.length + 1);
+                const bookIdToUse = activeBook ? activeBook.id : books[0].id;
+                const next = emptyEntry(bookIdToUse, activeEntries.length + 1);
                 setEntries([...entries, next]);
                 setSelectedId(next.id);
               }} aria-label="노래일기 추가"><Plus size={18} /></button>
@@ -375,6 +379,13 @@ export default function AdminPage() {
               <div className="form-grid two">
                 <label>곡 제목<input value={selected.title} onChange={(e) => updateSelected({ title: e.target.value })} /></label>
                 <label>부제<input value={selected.subtitle} onChange={(e) => updateSelected({ subtitle: e.target.value })} /></label>
+                <label style={{ gridColumn: '1 / -1' }}>카테고리(재생목록) 선택
+                  <select value={selected.bookId} onChange={(e) => updateSelected({ bookId: e.target.value })}>
+                    {books.map(b => (
+                      <option key={b.id} value={b.id}>{b.title || '제목 없음'}</option>
+                    ))}
+                  </select>
+                </label>
                 <label>
                   날짜 선택
                   <input
