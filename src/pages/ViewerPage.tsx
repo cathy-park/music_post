@@ -38,6 +38,42 @@ function getLRCIndex(lines: LRCLine[], current: number): number {
 }
 
 // ── SyncedLyrics 컴포넌트 ────────────────────────────
+/** [Intro], [Verse 1] 같은 섹션 헤더 판별 */
+const isSectionHeader = (l: string) => /^\[.+\]$/.test(l.trim());
+
+/**
+ * 비례 싱크: 각 줄에 가중치를 부여해 재생 시간 배분
+ *  - 실제 가사 줄: 1.0
+ *  - 빈 줄 (일시 정지): 0.4
+ *  - [섹션 헤더]: 0 (시간 배분 없음)
+ */
+function getProportionalIndex(rawLines: string[], current: number, duration: number): number {
+  if (duration <= 0 || current <= 0) return -1;
+
+  const weights: number[] = rawLines.map((l) => {
+    if (!l.trim()) return 0.4;
+    if (isSectionHeader(l)) return 0;
+    return 1.0;
+  });
+
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  if (totalWeight === 0) return -1;
+
+  const targetWeight = (current / duration) * totalWeight;
+  let accumulated = 0;
+  let lastLyricIdx = -1;
+
+  for (let i = 0; i < rawLines.length; i++) {
+    accumulated += weights[i];
+    // 섹션 헤더·빈줄은 하이라이트 대상에서 제외
+    if (rawLines[i].trim() && !isSectionHeader(rawLines[i])) {
+      lastLyricIdx = i;
+    }
+    if (accumulated >= targetWeight) return lastLyricIdx;
+  }
+  return lastLyricIdx;
+}
+
 function SyncedLyrics({
   lyrics,
   current,
@@ -54,24 +90,8 @@ function SyncedLyrics({
       const lrcLines = parseLRC(lyrics);
       return { lines: lrcLines.map((l) => l.text), activeIdx: getLRCIndex(lrcLines, current) };
     }
-    // 비례 모드: 빈 줄 포함 전체 줄
     const rawLines = lyrics.split('\n');
-    const nonEmpty = rawLines.filter((l) => l.trim()).length;
-    if (duration <= 0 || current <= 0 || nonEmpty === 0) {
-      return { lines: rawLines, activeIdx: -1 };
-    }
-    // 빈 줄 제외 기준으로 현재 위치 계산
-    const progress = current / duration;
-    const targetNonEmpty = Math.floor(progress * nonEmpty);
-    let count = 0;
-    let aIdx = -1;
-    for (let i = 0; i < rawLines.length; i++) {
-      if (rawLines[i].trim()) {
-        if (count === targetNonEmpty) { aIdx = i; break; }
-        count++;
-      }
-    }
-    return { lines: rawLines, activeIdx: aIdx };
+    return { lines: rawLines, activeIdx: getProportionalIndex(rawLines, current, duration) };
   }, [lyrics, current, duration]);
 
   // 현재 라인으로 부드럽게 스크롤

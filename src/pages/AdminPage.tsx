@@ -1,5 +1,6 @@
-import { Check, Copy, Lock, LogIn, Music, Plus, Save, Trash2, UploadCloud } from 'lucide-react';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Check, Copy, Lock, LogIn, Music, Plus, Radio, Save, Trash2, UploadCloud } from 'lucide-react';
+import { FormEvent, useEffect, useRef, useMemo, useState, useCallback } from 'react';
+import { resolveAudioUrl } from '../lib/idb';
 import { isSupabaseReady, supabase } from '../lib/supabase';
 import { deleteEntry, getAdminData, saveBook, saveEntry } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
@@ -50,6 +51,13 @@ export default function AdminPage() {
   const [needsLogin, setNeedsLogin] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+  const [tapMode, setTapMode] = useState(false);
+  const [tapStep, setTapStep] = useState(0);
+  const [tapTimestamps, setTapTimestamps] = useState<number[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [resolvedAudioUrl, setResolvedAudioUrl] = useState('');
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+
 
   const load = async () => {
     try {
@@ -77,6 +85,13 @@ export default function AdminPage() {
     setEntries((prev) => prev.map((entry) => entry.id === selectedId ? { ...entry, ...patch } : entry));
   };
 
+  /** 탭 모드에서 사용할 실제 가사 줄 목록 (빈 줄·헤더 포함 전체) */
+  const tapLines = useMemo(() => {
+    if (!tapMode || !selected) return [];
+    return selected.lyrics.split('\n');
+  }, [tapMode, selected]);
+
+
   const handleMagicLink = async (event: FormEvent) => {
     event.preventDefault();
     if (!supabase) return;
@@ -86,6 +101,61 @@ export default function AdminPage() {
     });
     setMessage(error ? error.message : '로그인 링크를 이메일로 보냈어요.');
   };
+
+  /** 탭 모드 시작 */
+  const startTapMode = useCallback(async () => {
+    if (!selected?.audioUrl) { setMessage('먼저 음원을 업로드하고 저장해주세요.'); return; }
+    const url = await resolveAudioUrl(selected.audioUrl);
+    setResolvedAudioUrl(url);
+    setTapTimestamps([]);
+    setTapStep(0);
+    setAudioCurrentTime(0);
+    setTapMode(true);
+  }, [selected]);
+
+  /** Space 키로도 탭 가능 */
+  useEffect(() => {
+    if (!tapMode) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.code === 'Space') { e.preventDefault(); handleTap(); }
+      if (e.code === 'Escape') setTapMode(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tapMode, tapStep, tapLines]);
+
+  /** 탭 → 타임스탬프 기록 */
+  const handleTap = useCallback(() => {
+    const t = audioRef.current?.currentTime ?? 0;
+    const next = [...tapTimestamps, t];
+    setTapTimestamps(next);
+
+    // 모든 줄 완료
+    if (tapStep >= tapLines.length - 1) {
+      // LRC 생성: 빈 줄은 타임스탬프 없이 그대로, 나머지는 [mm:ss.xx]
+      let tIdx = 0;
+      const lrc = tapLines.map((line) => {
+        if (!line.trim()) return '';
+        const time = next[tIdx++] ?? 0;
+        const mm = String(Math.floor(time / 60)).padStart(2, '0');
+        const ss = (time % 60).toFixed(2).padStart(5, '0');
+        return `[${mm}:${ss}]${line}`;
+      }).join('\n');
+      updateSelected({ lyrics: lrc });
+      setTapMode(false);
+      setMessage('✅ LRC 타임스탬프가 생성됐어요! 저장 버튼을 눌러주세요.');
+      return;
+    }
+    setTapStep((prev) => prev + 1);
+  }, [tapTimestamps, tapStep, tapLines]);
+
+  /** 탭 모드에서 실제 가사 줄(비어있지 않은)의 인덱스 */
+  const currentNonEmptyIdx = useMemo(() => {
+    return tapLines.slice(0, tapStep + 1).filter(l => l.trim()).length - 1;
+  }, [tapLines, tapStep]);
+
+  const nonEmptyTapLines = useMemo(() => tapLines.filter(l => l.trim()), [tapLines]);
 
   const saveCurrentEntry = async () => {
     if (!selected) return;
@@ -270,7 +340,21 @@ export default function AdminPage() {
                 <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0])} />
               </label>
 
-              <label>가사<textarea className="lyrics-editor" rows={18} value={selected.lyrics} onChange={(e) => updateSelected({ lyrics: e.target.value })} /></label>
+              <label>가사
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ color: '#44506a', fontSize: 13, fontWeight: 650 }}>가사</span>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    style={{ fontSize: 12, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
+                    onClick={startTapMode}
+                    title="음악을 재생하면서 줄마다 탭해서 LRC 타임스탬프 자동 생성"
+                  >
+                    <Radio size={13} /> 타임스탬프 기록
+                  </button>
+                </div>
+                <textarea className="lyrics-editor" rows={18} value={selected.lyrics} onChange={(e) => updateSelected({ lyrics: e.target.value })} />
+              </label>
             </>
           ) : (
             <div className="empty-editor"><Music size={28} /><p>왼쪽에서 노래일기를 선택하거나 새로 추가해줘.</p></div>
@@ -279,6 +363,51 @@ export default function AdminPage() {
       </section>
 
       {message && <div className="toast">{message}</div>}
+
+      {/* 탭-투-타임스탬프 모달 */}
+      {tapMode && (
+        <div className="tap-overlay">
+          <div className="tap-modal">
+            <div className="tap-modal-header">
+              <span className="eyebrow">TAP TO TIMESTAMP</span>
+              <h2>타임스탬프 기록</h2>
+              <p>음악이 재생되면 각 가사 줄이 시작될 때 버튼을 탭하세요.<br /><small>Space 키로도 탭 가능 · ESC로 취소</small></p>
+            </div>
+
+            <audio
+              ref={audioRef}
+              src={resolvedAudioUrl}
+              onTimeUpdate={(e) => setAudioCurrentTime(e.currentTarget.currentTime)}
+              autoPlay
+              controls
+              style={{ width: '100%', marginBottom: 20, borderRadius: 12 }}
+            />
+
+            <div className="tap-current-line">
+              <span className="tap-line-label">현재 줄 ({tapStep + 1} / {tapLines.length})</span>
+              <strong className="tap-line-text">{tapLines[tapStep] || '(빈 줄)'}</strong>
+            </div>
+
+            <div className="tap-progress">
+              {nonEmptyTapLines.map((line, i) => (
+                <span
+                  key={i}
+                  className={`tap-pill${i < currentNonEmptyIdx ? ' done' : i === currentNonEmptyIdx ? ' active' : ''}`}
+                >
+                  {line.length > 14 ? line.slice(0, 14) + '…' : line}
+                </span>
+              ))}
+            </div>
+
+            <div className="tap-actions">
+              <button className="danger-button" onClick={() => setTapMode(false)}>취소</button>
+              <button className="tap-button" onClick={handleTap}>
+                {tapStep >= tapLines.length - 1 ? '✅ 완료' : '🎵 다음 줄'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
