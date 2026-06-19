@@ -303,35 +303,35 @@ export default function ViewerPage() {
                   )}
                 </div>
 
-                <div className="reading-scroll">
-                  <div className="sticky-lyric-header">
-                    {activeEntry.lyrics.trim() && (
-                      <div className="current-lyric-banner">
-                        {(() => {
-                          const { lines, activeIdx } = syncData;
-                          
-                          if (activeIdx < 0) {
-                            const firstLine = lines.find(l => l.trim());
-                            if (firstLine) {
-                              return <p className="lyric-pop" style={{ opacity: 0.35, transform: 'none', animation: 'none' }}>{firstLine}</p>;
-                            }
-                            return <p style={{ opacity: 0.3 }}>🎵</p>;
-                          }
-
-                          const activeLine = lines[activeIdx]?.trim();
-                          if (activeLine) {
-                            return <p key={activeIdx} className="lyric-pop">{activeLine}</p>;
+                <div className="lyric-header-static">
+                  {activeEntry.lyrics.trim() && (
+                    <div className="current-lyric-banner">
+                      {(() => {
+                        const { lines, activeIdx } = syncData;
+                        
+                        if (activeIdx < 0) {
+                          const firstLine = lines.find(l => l.trim());
+                          if (firstLine) {
+                            return <p className="lyric-pop" style={{ opacity: 0.35, transform: 'none', animation: 'none' }}>{firstLine}</p>;
                           }
                           return <p style={{ opacity: 0.3 }}>🎵</p>;
-                        })()}
-                      </div>
-                    )}
-                    <div className="content-card-heading sticky-title">
-                      <span>가사</span>
-                      <small>LYRICS</small>
-                    </div>
-                  </div>
+                        }
 
+                        const activeLine = lines[activeIdx]?.trim();
+                        if (activeLine) {
+                          return <p key={activeIdx} className="lyric-pop">{activeLine}</p>;
+                        }
+                        return <p style={{ opacity: 0.3 }}>🎵</p>;
+                      })()}
+                    </div>
+                  )}
+                  <div className="content-card-heading sticky-title">
+                    <span>가사</span>
+                    <small>LYRICS</small>
+                  </div>
+                </div>
+
+                <div className="reading-scroll">
                   <section className="lyrics-card">
                     <SyncedLyrics lines={syncData.lines} activeIdx={syncData.activeIdx} />
                   </section>
