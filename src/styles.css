@@ -401,6 +401,35 @@ a { color: inherit; text-decoration: none; }
   font-size: 12.5px;
   line-height: 1.84;
 }
+
+/* 가사 싱크 */
+.lyrics-synced {
+  display: flex;
+  flex-direction: column;
+  padding: 11px 2px 2px;
+  gap: 0;
+}
+.lyrics-line {
+  display: block;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.84;
+  color: #c9b4b0;
+  transition: color 0.35s ease, font-size 0.25s ease, font-weight 0.25s ease;
+  cursor: default;
+}
+.lyrics-line.past {
+  color: #a08a87;
+}
+.lyrics-line.active {
+  color: #d76072;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.lyrics-line-gap {
+  display: block;
+  height: 0.7em;
+}
 .comment-card {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);

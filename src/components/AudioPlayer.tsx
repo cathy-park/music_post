@@ -12,9 +12,10 @@ function formatTime(seconds: number): string {
 type Props = {
   src: string;
   title: string;
+  onProgress?: (current: number, duration: number) => void;
 };
 
-export default function AudioPlayer({ src, title }: Props) {
+export default function AudioPlayer({ src, title, onProgress }: Props) {
   const ref = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -55,8 +56,17 @@ export default function AudioPlayer({ src, title }: Props) {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
-        onTimeUpdate={(event) => setCurrent(event.currentTarget.currentTime)}
-        onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
+        onTimeUpdate={(event) => {
+          const t = event.currentTarget.currentTime;
+          const d = event.currentTarget.duration || 0;
+          setCurrent(t);
+          onProgress?.(t, d);
+        }}
+        onLoadedMetadata={(event) => {
+          const d = event.currentTarget.duration;
+          setDuration(d);
+          onProgress?.(0, d);
+        }}
       />
       <button className="play-button" onClick={toggle} disabled={!resolvedSrc} aria-label={playing ? '일시정지' : '재생'}>
         {playing ? <Pause size={22} /> : <Play size={22} fill="currentColor" />}
