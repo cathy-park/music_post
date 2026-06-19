@@ -102,7 +102,6 @@ export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded 
           </>
         )}
       </div>
-      <Volume2 size={18} className="volume-icon" />
     </div>
   );
 }
