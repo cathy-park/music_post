@@ -128,7 +128,6 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   flex-direction: column;
   padding: 14px;
-  overflow: hidden;
   border-radius: 22px;
 }
 .playlist-heading {
@@ -887,12 +886,12 @@ textarea { resize: vertical; line-height: 1.6; }
   /* 플레이리스트 패널: 모바일 스크롤 제거, 모두 표시 */
   .playlist-panel {
     display: none;
-    padding: 9px;
+    padding: 8px;
     border-radius: 17px;
+    overflow: visible;
   }
   .playlist-panel.drawer-open {
-    display: flex;
-    flex-direction: column;
+    display: block;
     animation: slideDown 0.22s ease;
     overflow: visible;
   }
@@ -901,19 +900,17 @@ textarea { resize: vertical; line-height: 1.6; }
     to   { opacity: 1; transform: translateY(0); }
   }
   .entry-list {
-    flex: none;
-    overflow-y: visible;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
     gap: 6px;
     padding: 0;
+    overflow: visible;
   }
   .entry-card {
     flex: 0 0 auto;
     width: 100%;
-    height: 54px;
-    min-height: 54px;
+    height: auto;
+    min-height: 52px;
     grid-template-columns: 32px minmax(0, 1fr) 16px;
     gap: 8px;
     padding: 7px 9px;
@@ -959,7 +956,7 @@ textarea { resize: vertical; line-height: 1.6; }
 
 @media (max-width: 480px) {
   .viewer-header h1 { font-size: 23px; }
-  .entry-card { flex-basis: 154px; min-width: 154px; }
+  .entry-card { width: 100%; min-height: 52px; height: auto; min-width: 0; flex-basis: auto; }
   .song-heading h2 { max-width: 225px; }
   .admin-page { padding: 22px 14px; }
   .admin-header { align-items: flex-start; flex-direction: column; }
