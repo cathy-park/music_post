@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       
       if (supabaseUrl && supabaseKey) {
         // We use fetch directly to avoid commonjs/esm module issues with supabase in serverless functions if any.
-        const resBook = await fetch(`${supabaseUrl}/rest/v1/diary_books?share_token=eq.${token}&select=title`, {
+        const resBook = await fetch(`${supabaseUrl}/rest/v1/diary_books?share_token=eq.${token}&select=title,subtitle`, {
           headers: {
             'apikey': supabaseKey,
             'Authorization': `Bearer ${supabaseKey}`
@@ -31,15 +31,16 @@ export default async function handler(req, res) {
           const data = await resBook.json();
           if (data && data.length > 0 && data[0].title) {
             const title = data[0].title;
+            const subtitle = data[0].subtitle || "우리만의 음악일기를 확인해보세요.";
             html = html.replace('<title>우리의 작은 세계</title>', `<title>${title}</title>`);
             
             const ogTags = `
     <meta property="og:title" content="${title}" />
-    <meta property="og:description" content="우리만의 음악일기를 확인해보세요." />
+    <meta property="og:description" content="${subtitle}" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="${title}" />
-    <meta name="twitter:description" content="우리만의 음악일기를 확인해보세요." />
+    <meta name="twitter:description" content="${subtitle}" />
             `;
             html = html.replace('</head>', `${ogTags}\n</head>`);
           }

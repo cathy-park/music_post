@@ -1,4 +1,4 @@
-import { Check, Copy, Lock, LogIn, Music, Plus, Radio, Save, Trash2, UploadCloud } from 'lucide-react';
+import { Check, Copy, Lock, LogIn, Music, Plus, Radio, Save, Settings, Trash2, UploadCloud } from 'lucide-react';
 import { FormEvent, useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { resolveAudioUrl } from '../lib/idb';
 import { isSupabaseReady, supabase } from '../lib/supabase';
@@ -49,8 +49,15 @@ export default function AdminPage() {
   const [audioFile, setAudioFile] = useState<File>();
   const [message, setMessage] = useState('');
 
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(!isSupabaseReady);
   const [passwordInput, setPasswordInput] = useState('');
+
+  // Category Settings Modal State
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<DiaryBook | null>(null);
+  const [editingCatTitle, setEditingCatTitle] = useState('');
+  const [editingCatSubtitle, setEditingCatSubtitle] = useState('');
+
   const [tapMode, setTapMode] = useState(false);
   const [tapStep, setTapStep] = useState(0);
   const [tapTimestamps, setTapTimestamps] = useState<number[]>([]);
@@ -233,17 +240,19 @@ export default function AdminPage() {
     }
   };
 
-  const handleUpdateCategoryName = async (newName: string) => {
-    if (!activeBook || !newName) return;
+  const saveCategorySettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory || !editingCatTitle.trim()) return;
     try {
-      const nextBook = { ...activeBook, title: newName };
+      const nextBook = { ...editingCategory, title: editingCatTitle, subtitle: editingCatSubtitle };
       await saveBook(nextBook);
-      setBooks(books.map(b => b.id === activeBook.id ? nextBook : b));
+      setBooks(books.map(b => b.id === editingCategory.id ? nextBook : b));
+      setIsCategoryModalOpen(false);
+      setMessage('카테고리 설정을 저장했어요.');
     } catch (err) {
       setMessage((err as Error).message);
     }
   };
-
 
 
   const activeBook = books.find(b => b.id === activeBookId);
@@ -325,13 +334,28 @@ export default function AdminPage() {
           모든 노래일기
         </button>
         {books.map(b => (
-          <button 
-            key={b.id} 
-            className={`category-chip ${b.id === activeBookId ? 'active' : ''}`}
-            onClick={() => setActiveBookId(b.id)}
-          >
-            {b.title || '제목 없음'}
-          </button>
+          <div key={b.id} className={`category-chip-wrap ${b.id === activeBookId ? 'active' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <button 
+              className={`category-chip ${b.id === activeBookId ? 'active' : ''}`}
+              onClick={() => setActiveBookId(b.id)}
+            >
+              {b.title || '제목 없음'}
+            </button>
+            {b.id === activeBookId && (
+              <button 
+                className="icon-button compact" 
+                style={{ padding: 4, background: 'rgba(255,255,255,0.4)', borderRadius: '8px' }}
+                onClick={() => {
+                  setEditingCategory(b);
+                  setEditingCatTitle(b.title || '');
+                  setEditingCatSubtitle(b.subtitle || '');
+                  setIsCategoryModalOpen(true);
+                }}
+              >
+                <Settings size={12} />
+              </button>
+            )}
+          </div>
         ))}
         {isSupabaseReady && (
           <button className="category-chip add" onClick={handleAddCategory}>
@@ -350,11 +374,7 @@ export default function AdminPage() {
       <section className="admin-workspace">
         <aside className="admin-list admin-card">
           <div className="card-title-row">
-            <h2>{activeBook ? activeBook.title || '카테고리 이름 설정' : '모든 노래일기'} 
-            {activeBook && <button className="icon-button compact" onClick={() => {
-              const newTitle = window.prompt('카테고리 이름을 변경합니다:', activeBook?.title);
-              if (newTitle) handleUpdateCategoryName(newTitle);
-            }}><Music size={14}/></button>}</h2>
+            <h2>{activeBook ? activeBook.title || '카테고리 이름 설정' : '모든 노래일기'}</h2>
             <div className="row-actions">
               {activeBook && <button className="icon-button compact" onClick={handleDeleteCategory} title="카테고리 삭제"><Trash2 size={15} color="#d76072"/></button>}
               <button className="icon-button" onClick={() => {
@@ -454,10 +474,45 @@ export default function AdminPage() {
               </label>
             </>
           ) : (
-            <div className="empty-editor"><Music size={28} /><p>왼쪽에서 노래일기를 선택하거나 새로 추가해줘.</p></div>
+            <div className="empty-editor"><p>왼쪽에서 노래일기를 선택하거나 새로 추가해줘.</p></div>
           )}
         </section>
       </section>
+
+      {/* 카테고리 설정 모달 */}
+      {isCategoryModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCategoryModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2>카테고리(재생목록) 설정</h2>
+            <form onSubmit={saveCategorySettings}>
+              <div className="form-group" style={{ marginTop: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6, fontWeight: 600 }}>카테고리명 (제목)</label>
+                <input 
+                  type="text" 
+                  value={editingCatTitle} 
+                  onChange={e => setEditingCatTitle(e.target.value)} 
+                  required 
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)' }}
+                />
+              </div>
+              <div className="form-group" style={{ marginTop: 12 }}>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6, fontWeight: 600 }}>설명글 (공유 시 노출)</label>
+                <textarea 
+                  value={editingCatSubtitle} 
+                  onChange={e => setEditingCatSubtitle(e.target.value)} 
+                  rows={2}
+                  placeholder="우리만의 음악일기를 확인해보세요."
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.1)', resize: 'none' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 24, justifyContent: 'flex-end' }}>
+                <button type="button" className="ghost-button" onClick={() => setIsCategoryModalOpen(false)}>취소</button>
+                <button type="submit" className="primary-button">저장</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {message && <div className="toast">{message}</div>}
 
