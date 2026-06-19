@@ -288,7 +288,6 @@ export default function AdminPage() {
                 <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0])} />
               </label>
 
-              <label>짧은 코멘트<textarea rows={5} value={selected.comment} onChange={(e) => updateSelected({ comment: e.target.value })} /></label>
               <label>가사<textarea className="lyrics-editor" rows={18} value={selected.lyrics} onChange={(e) => updateSelected({ lyrics: e.target.value })} /></label>
             </>
           ) : (

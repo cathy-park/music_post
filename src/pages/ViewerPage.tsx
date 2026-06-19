@@ -145,14 +145,6 @@ export default function ViewerPage() {
                     <pre className="lyrics">{activeEntry.lyrics}</pre>
                   </section>
 
-                  <aside className="comment-card">
-                    <div className="comment-icon" aria-hidden="true">💭</div>
-                    <div className="comment-copy">
-                      <span>{book.senderName}의 짧은 코멘트</span>
-                      <p>{activeEntry.comment}</p>
-                      <small>— {book.senderName}</small>
-                    </div>
-                  </aside>
 
                   <div className="detail-footnote">
                     <Heart size={13} fill="currentColor" />
