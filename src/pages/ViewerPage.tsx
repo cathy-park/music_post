@@ -260,7 +260,20 @@ export default function ViewerPage() {
               <>
                 <div className="song-heading">
                   <div className="song-title-wrap">
-                    <span className="day-pill">{activeEntry.dateLabel}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="day-pill">{activeEntry.dateLabel}</span>
+                      {activeEntry.dateLabel && (
+                        <span style={{ fontSize: '10px', color: '#a1837f', fontWeight: 600, letterSpacing: '0.02em' }}>
+                          {(() => {
+                            const match = activeEntry.dateLabel.match(/DAY\s*(\d+)/);
+                            if (!match) return '';
+                            const d = new Date(new Date('2025-05-30T00:00:00+09:00').getTime() + (parseInt(match[1], 10) - 1) * 24 * 60 * 60 * 1000);
+                            const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+                            return `${kst.getUTCFullYear()}.${String(kst.getUTCMonth() + 1).padStart(2, '0')}.${String(kst.getUTCDate()).padStart(2, '0')}`;
+                          })()}
+                        </span>
+                      )}
+                    </div>
                     <h2>{activeEntry.title}</h2>
                     <p>{activeEntry.subtitle}</p>
                   </div>
