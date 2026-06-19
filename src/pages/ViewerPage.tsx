@@ -263,6 +263,15 @@ export default function ViewerPage() {
                     <div className="current-lyric-banner">
                       {(() => {
                         const { lines, activeIdx } = syncData;
+                        
+                        if (activeIdx < 0) {
+                          const firstLine = lines.find(l => l.trim());
+                          if (firstLine) {
+                            return <p className="lyric-pop" style={{ opacity: 0.35, transform: 'none', animation: 'none' }}>{firstLine}</p>;
+                          }
+                          return <p style={{ opacity: 0.3 }}>🎵</p>;
+                        }
+
                         const activeLine = lines[activeIdx]?.trim();
                         if (activeLine) {
                           return <p key={activeIdx} className="lyric-pop">{activeLine}</p>;
