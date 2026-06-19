@@ -73,7 +73,7 @@ export default function AudioPlayer({ src, title, onProgress }: Props) {
       </button>
       <div className="player-main">
         <div className="player-topline">
-          <strong>{resolvedSrc ? '노래일기 듣기' : '음원 준비 중'}</strong>
+          <strong>{!resolvedSrc && '음원 준비 중'}</strong>
           <span>{formatTime(current)} / {formatTime(duration)}</span>
         </div>
         <input
