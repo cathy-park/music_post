@@ -4,6 +4,25 @@ import { isSupabaseReady, supabase } from '../lib/supabase';
 import { deleteEntry, getAdminData, saveBook, saveEntry } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
 
+/** 기준일: 2025-05-30 = DAY 1 */
+const BASE_DATE = new Date('2025-05-30T00:00:00+09:00');
+
+function calcDayLabel(dateStr: string): { label: string; dayNum: number } {
+  if (!dateStr) return { label: '', dayNum: 0 };
+  const picked = new Date(dateStr + 'T00:00:00+09:00');
+  const diff = Math.round((picked.getTime() - BASE_DATE.getTime()) / (1000 * 60 * 60 * 24));
+  const dayNum = diff + 1;
+  return { label: `DAY ${dayNum}`, dayNum };
+}
+
+function labelToDateStr(label: string): string {
+  const match = label.match(/DAY\s*(\d+)/);
+  if (!match) return '';
+  const dayNum = parseInt(match[1], 10);
+  const d = new Date(BASE_DATE.getTime() + (dayNum - 1) * 24 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
 const emptyEntry = (bookId: string, order: number): DiaryEntry => ({
   id: crypto.randomUUID(),
   bookId,
@@ -218,8 +237,23 @@ export default function AdminPage() {
               <div className="form-grid two">
                 <label>곡 제목<input value={selected.title} onChange={(e) => updateSelected({ title: e.target.value })} /></label>
                 <label>부제<input value={selected.subtitle} onChange={(e) => updateSelected({ subtitle: e.target.value })} /></label>
-                <label>날짜 라벨<input value={selected.dateLabel} onChange={(e) => updateSelected({ dateLabel: e.target.value })} /></label>
-                <label>정렬 순서<input type="number" value={selected.order} onChange={(e) => updateSelected({ order: Number(e.target.value) })} /></label>
+                <label>
+                  날짜 선택
+                  <input
+                    type="date"
+                    value={labelToDateStr(selected.dateLabel)}
+                    min="2025-05-30"
+                    onChange={(e) => {
+                      const { label, dayNum } = calcDayLabel(e.target.value);
+                      updateSelected({ dateLabel: label, order: dayNum });
+                    }}
+                  />
+                  {selected.dateLabel && (
+                    <small className="emoji-hint" style={{ marginTop: 4 }}>
+                      → {selected.dateLabel} (정렬 순서: {selected.order}일)
+                    </small>
+                  )}
+                </label>
                 <label>
                   아이콘 이모지
                   <div className="emoji-input-wrap">
