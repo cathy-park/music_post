@@ -246,6 +246,18 @@ export default function AdminPage() {
 
 
 
+  const activeBook = books.find(b => b.id === activeBookId);
+  const activeEntries = activeBookId === '' ? entries : entries.filter(e => e.bookId === activeBookId);
+
+  // 브라우저 탭(문서) 제목 동적 설정
+  useEffect(() => {
+    if (activeBook?.title) {
+      document.title = `${activeBook.title} - 관리자`;
+    } else {
+      document.title = '음악일기 관리';
+    }
+  }, [activeBook?.title]);
+
   if (!isUnlocked) {
     return (
       <main className="admin-login">
@@ -277,18 +289,6 @@ export default function AdminPage() {
       </main>
     );
   }
-
-  const activeBook = books.find(b => b.id === activeBookId);
-  const activeEntries = activeBookId === '' ? entries : entries.filter(e => e.bookId === activeBookId);
-
-  // 브라우저 탭(문서) 제목 동적 설정
-  useEffect(() => {
-    if (activeBook?.title) {
-      document.title = `${activeBook.title} - 관리자`;
-    } else {
-      document.title = '음악일기 관리';
-    }
-  }, [activeBook?.title]);
 
   if (books.length === 0) return <main className="center-state"><div className="loader" /></main>;
 
