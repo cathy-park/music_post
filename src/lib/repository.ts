@@ -188,11 +188,24 @@ export async function migrateLocalToSupabase(): Promise<void> {
   const localBook = loadLocalBook();
   const localEntries = loadLocalEntries();
 
+  // 수파베이스에 이미 책이 생성되어 있다면 해당 ID를 그대로 사용 (중복 방지)
+  const { data: existingBook } = await supabase
+    .from('diary_books')
+    .select('id')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
   const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
   
   let needsLocalUpdate = false;
   
-  if (!isUUID(localBook.id)) {
+  if (existingBook) {
+    if (localBook.id !== existingBook.id) {
+      localBook.id = existingBook.id;
+      needsLocalUpdate = true;
+    }
+  } else if (!isUUID(localBook.id)) {
     localBook.id = crypto.randomUUID();
     needsLocalUpdate = true;
   }
@@ -213,7 +226,10 @@ export async function migrateLocalToSupabase(): Promise<void> {
     saveLocalEntries(localEntries);
   }
 
-  // 1. 책 정보 옮기기
+  // 기존 데이터 덮어쓰기 전 안전하게 비우기 (마이그레이션 중복 방지)
+  await supabase.from('diary_entries').delete().eq('book_id', localBook.id);
+
+  // 1. 책 정보 업데이트
   await saveBook(localBook);
 
   // 2. 일기 정보 및 오디오 파일 옮기기

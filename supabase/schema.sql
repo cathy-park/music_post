@@ -26,6 +26,7 @@ create table if not exists public.diary_entries (
   lyrics text not null default '',
   audio_url text not null default '',
   cover_tone text not null default 'night' check (cover_tone in ('night','dawn','warm','forest')),
+  icon text not null default '🎵',
   sort_order integer not null default 0,
   published boolean not null default false,
   created_at timestamptz not null default now(),
@@ -129,6 +130,7 @@ returns table (
   lyrics text,
   audio_url text,
   cover_tone text,
+  icon text,
   sort_order integer,
   published boolean
 )
@@ -137,7 +139,7 @@ security definer
 set search_path = public
 as $$
   select e.id, e.book_id, e.title, e.subtitle, e.date_label,
-         e.comment, e.lyrics, e.audio_url, e.cover_tone,
+         e.comment, e.lyrics, e.audio_url, e.cover_tone, e.icon,
          e.sort_order, e.published
   from public.diary_entries e
   join public.diary_books b on b.id = e.book_id
