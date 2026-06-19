@@ -130,6 +130,13 @@ export default function ViewerPage() {
   const [playlistOpen, setPlaylistOpen] = useState(true);
   const [audioProgress, setAudioProgress] = useState({ current: 0, duration: 0 });
   const [autoPlayNext, setAutoPlayNext] = useState(false);
+  const readingScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (readingScrollRef.current) {
+      readingScrollRef.current.scrollTop = 0;
+    }
+  }, [activeId]);
 
   const activeEntry = useMemo(
     () => entries.find((entry) => entry.id === activeId) ?? entries[0],
@@ -338,7 +345,7 @@ export default function ViewerPage() {
                   </div>
                 </div>
 
-                <div className="reading-scroll">
+                <div className="reading-scroll" ref={readingScrollRef}>
                   <section className="lyrics-card">
                     <SyncedLyrics lines={syncData.lines} activeIdx={syncData.activeIdx} />
                   </section>
