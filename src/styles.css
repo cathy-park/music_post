@@ -820,16 +820,15 @@ textarea { resize: vertical; line-height: 1.6; }
 }
 
 @media (max-width: 720px) {
-  /* 핵심: 모바일에서 페이지를 스크롤 가능하게 전환 */
+  /* 핵심: 모바일에서 고정 레이아웃 (100svh), 가사만 내부 스크롤 */
   .viewer-page {
-    height: auto;
+    height: 100svh;
     min-height: 100svh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     padding: 8px;
   }
   .viewer-shell {
-    height: auto;
+    height: 100%;
     min-height: 0;
   }
   .viewer-header { min-height: 54px; align-items: center; padding: 0 3px 7px; }
@@ -893,29 +892,30 @@ textarea { resize: vertical; line-height: 1.6; }
   }
 
   .diary-board {
-    flex: none;
+    flex: 1;
+    min-height: 0;
     height: auto;
     display: flex;
     flex-direction: column;
     gap: 8px;
     padding: 8px;
     border-radius: 24px;
-    overflow: visible;
+    overflow: hidden;
   }
 
-  /* 플레이리스트 패널: 높이 자동, overflow 해제 */
+  /* 아코디언: max-height 제한으로 가사 영역 보호 */
   .playlist-panel {
     display: none;
     padding: 8px;
     border-radius: 17px;
-    overflow: visible;
+    overflow: hidden;
     height: auto;
   }
   .playlist-panel.drawer-open {
     display: block;
-    height: auto;
+    max-height: 45vh;
+    overflow-y: auto;
     animation: slideDown 0.22s ease;
-    overflow: visible;
   }
   @keyframes slideDown {
     from { opacity: 0; transform: translateY(-8px); }
@@ -946,13 +946,13 @@ textarea { resize: vertical; line-height: 1.6; }
   .entry-day { font-size: 7px; }
   .playlist-note { display: none; }
   .detail-panel {
-    flex: none;
-    height: auto;
+    flex: 1;
+    min-height: 0;
     gap: 7px;
     padding: 10px;
     border-radius: 17px;
-    overflow: visible;
-    grid-template-rows: none;
+    overflow: hidden;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
   }
   .song-heading { gap: 10px; }
   .song-heading h2 { margin-top: 4px; font-size: 21px; }
@@ -968,9 +968,9 @@ textarea { resize: vertical; line-height: 1.6; }
   .empty-audio { min-height: 48px; padding: 8px 10px; border-radius: 13px; font-size: 9px; }
   .reading-scroll {
     padding-right: 2px;
-    flex: none;
-    height: auto;
-    overflow: visible;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .lyrics-card { padding: 10px 11px 12px; border-radius: 14px; }
   .content-card-heading { padding-bottom: 6px; }

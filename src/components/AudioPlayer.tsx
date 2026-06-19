@@ -89,6 +89,9 @@ export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded 
               max={duration || 1}
               step={0.01}
               value={current}
+              style={{
+                background: `linear-gradient(to right, #df7183 ${duration > 0 ? (current / duration) * 100 : 0}%, rgba(223,113,131,0.18) ${duration > 0 ? (current / duration) * 100 : 0}%)`
+              }}
               onChange={(event) => {
                 const next = Number(event.target.value);
                 setCurrent(next);
