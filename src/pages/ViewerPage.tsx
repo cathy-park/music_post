@@ -9,7 +9,7 @@ import { getViewerData } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
 
 // ── LRC 파서 ─────────────────────────────────────────
-type LRCLine = { time: number; text: string };
+type LRCLine = { time: number | null; text: string };
 
 function parseLRC(text: string): LRCLine[] {
   const result: LRCLine[] = [];
@@ -18,6 +18,8 @@ function parseLRC(text: string): LRCLine[] {
     if (match) {
       const time = parseInt(match[1]) * 60 + parseFloat(match[2]);
       result.push({ time, text: match[3].trim() });
+    } else {
+      result.push({ time: null, text: raw.trim() });
     }
   }
   return result;
@@ -31,13 +33,15 @@ function isLRC(text: string): boolean {
 function getLRCIndex(lines: LRCLine[], current: number): number {
   let idx = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (current >= lines[i].time) idx = i;
-    else break;
+    if (lines[i].time !== null) {
+      if (current >= lines[i].time!) idx = i;
+      else break;
+    }
   }
   return idx;
 }
 
-// ── SyncedLyrics 컴포넌트 ────────────────────────────
+// ── SyncedLyrics 컴포넌트 & 훅 ────────────────────────────
 /** [Intro], [Verse 1] 같은 섹션 헤더 판별 */
 const isSectionHeader = (l: string) => /^\[.+\]$/.test(l.trim());
 
@@ -74,18 +78,8 @@ function getProportionalIndex(rawLines: string[], current: number, duration: num
   return lastLyricIdx;
 }
 
-function SyncedLyrics({
-  lyrics,
-  current,
-  duration,
-}: {
-  lyrics: string;
-  current: number;
-  duration: number;
-}) {
-  const activeRef = useRef<HTMLSpanElement | null>(null);
-
-  const { lines, activeIdx } = useMemo(() => {
+function useLyricsSync(lyrics: string, current: number, duration: number) {
+  return useMemo(() => {
     if (isLRC(lyrics)) {
       const lrcLines = parseLRC(lyrics);
       return { lines: lrcLines.map((l) => l.text), activeIdx: getLRCIndex(lrcLines, current) };
@@ -93,6 +87,10 @@ function SyncedLyrics({
     const rawLines = lyrics.split('\n');
     return { lines: rawLines, activeIdx: getProportionalIndex(rawLines, current, duration) };
   }, [lyrics, current, duration]);
+}
+
+function SyncedLyrics({ lines, activeIdx }: { lines: string[]; activeIdx: number }) {
+  const activeRef = useRef<HTMLSpanElement | null>(null);
 
   // 현재 라인으로 부드럽게 스크롤
   useEffect(() => {
@@ -131,6 +129,17 @@ export default function ViewerPage() {
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [audioProgress, setAudioProgress] = useState({ current: 0, duration: 0 });
 
+  const activeEntry = useMemo(
+    () => entries.find((entry) => entry.id === activeId) ?? entries[0],
+    [entries, activeId]
+  );
+
+  const syncData = useLyricsSync(
+    activeEntry?.lyrics || '',
+    audioProgress.current,
+    audioProgress.duration
+  );
+
   useEffect(() => {
     getViewerData(token)
       .then((data) => {
@@ -146,10 +155,7 @@ export default function ViewerPage() {
     setAudioProgress({ current: 0, duration: 0 });
   }, [activeId]);
 
-  const activeEntry = useMemo(
-    () => entries.find((entry) => entry.id === activeId) ?? entries[0],
-    [entries, activeId],
-  );
+
 
   const handleProgress = useCallback((current: number, duration: number) => {
     setAudioProgress({ current, duration });
@@ -253,16 +259,25 @@ export default function ViewerPage() {
                 </div>
 
                 <div className="reading-scroll">
+                  {activeEntry.lyrics.trim() && (
+                    <div className="current-lyric-banner">
+                      {(() => {
+                        const { lines, activeIdx } = syncData;
+                        const activeLine = lines[activeIdx]?.trim();
+                        if (activeLine) {
+                          return <p key={activeIdx} className="lyric-pop">{activeLine}</p>;
+                        }
+                        return <p style={{ opacity: 0.3 }}>🎵</p>;
+                      })()}
+                    </div>
+                  )}
+
                   <section className="lyrics-card">
                     <div className="content-card-heading">
                       <span>가사</span>
                       <small>LYRICS</small>
                     </div>
-                    <SyncedLyrics
-                      lyrics={activeEntry.lyrics}
-                      current={audioProgress.current}
-                      duration={audioProgress.duration}
-                    />
+                    <SyncedLyrics lines={syncData.lines} activeIdx={syncData.activeIdx} />
                   </section>
 
                   <div className="detail-footnote">
