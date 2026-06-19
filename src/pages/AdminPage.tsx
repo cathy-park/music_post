@@ -107,8 +107,24 @@ export default function AdminPage() {
     if (!selected?.audioUrl) { setMessage('먼저 음원을 업로드하고 저장해주세요.'); return; }
     const url = await resolveAudioUrl(selected.audioUrl);
     setResolvedAudioUrl(url);
-    setTapTimestamps([]);
-    setTapStep(0);
+
+    // 기존 가사에서 타임스탬프 파싱
+    const initialTimestamps: number[] = [];
+    const lines = selected.lyrics.split('\n');
+    for (const line of lines) {
+      if (!line.trim()) continue; // 빈 줄 스킵
+      const match = line.match(/^\[(\d+):(\d+(?:\.\d+)?)\]/);
+      if (match) {
+        const mm = parseInt(match[1], 10);
+        const ss = parseFloat(match[2]);
+        initialTimestamps.push(mm * 60 + ss);
+      } else {
+        break; // 타임코드 없는 줄을 만나면 중단
+      }
+    }
+
+    setTapTimestamps(initialTimestamps);
+    setTapStep(initialTimestamps.length);
     setAudioCurrentTime(0);
     setTapMode(true);
   }, [selected]);
@@ -397,6 +413,11 @@ export default function AdminPage() {
               ref={audioRef}
               src={resolvedAudioUrl}
               onTimeUpdate={(e) => setAudioCurrentTime(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => {
+                if (tapTimestamps.length > 0) {
+                  e.currentTarget.currentTime = tapTimestamps[tapTimestamps.length - 1];
+                }
+              }}
               autoPlay
               controls
               style={{ width: '100%', marginBottom: 20, borderRadius: 12 }}
