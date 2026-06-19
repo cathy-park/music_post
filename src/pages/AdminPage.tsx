@@ -186,24 +186,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      <section className="book-settings admin-card">
-        <div className="card-title-row">
-          <h2>첫 화면 설정</h2>
-          <button className="primary-button compact" onClick={async () => {
-            await saveBook(book);
-            setMessage('첫 화면을 저장했어요.');
-          }}><Save size={15} /> 저장</button>
-        </div>
-        <div className="form-grid two">
-          <label>서비스 제목<input value={book.title} onChange={(e) => setBook({ ...book, title: e.target.value })} /></label>
-          <label>한 줄 설명<input value={book.subtitle} onChange={(e) => setBook({ ...book, subtitle: e.target.value })} /></label>
-          <label>받는 사람<input value={book.recipientName} onChange={(e) => setBook({ ...book, recipientName: e.target.value })} /></label>
-          <label>보내는 사람<input value={book.senderName} onChange={(e) => setBook({ ...book, senderName: e.target.value })} /></label>
-          <label>기념 일수<input type="number" value={book.dayCount} onChange={(e) => setBook({ ...book, dayCount: Number(e.target.value) })} /></label>
-          <label className="toggle-label"><input type="checkbox" checked={book.published} onChange={(e) => setBook({ ...book, published: e.target.checked })} /> 링크 공개</label>
-        </div>
-        <label>첫 인사<textarea rows={4} value={book.coverMessage} onChange={(e) => setBook({ ...book, coverMessage: e.target.value })} /></label>
-      </section>
 
       <section className="admin-workspace">
         <aside className="admin-list admin-card">

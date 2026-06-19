@@ -48,17 +48,7 @@ export default function ViewerPage() {
   return (
     <main className="viewer-page">
       <div className="viewer-shell">
-        <header className="viewer-header">
-          <div className="viewer-title-block">
-            <span className="viewer-kicker">100 DAYS · MUSIC DIARY</span>
-            <h1>{book.title}<span aria-hidden="true">💌</span></h1>
-            <p>{book.subtitle}</p>
-          </div>
-          <div className="viewer-meta">
-            <span>TO. {book.recipientName}</span>
-            <span>FROM. {book.senderName}</span>
-          </div>
-        </header>
+
 
         <section className="diary-board">
           {/* 모바일: 플레이리스트 드로어 토글 버튼 */}
