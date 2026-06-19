@@ -351,10 +351,6 @@ export default function ViewerPage() {
         </section>
       </div>
 
-      {/* 관리자 페이지 버튼 (우측 하단 플로팅) */}
-      <Link to="/admin" className="admin-fab" aria-label="관리자 페이지로 이동">
-        <Settings size={18} />
-      </Link>
     </main>
   );
 }
