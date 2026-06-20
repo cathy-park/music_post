@@ -25,7 +25,7 @@ export default function EntryCard({ entry, active, onClick }: Props) {
               {(() => {
                 const match = entry.dateLabel.match(/DAY\s*(\d+)/);
                 if (!match) return '';
-                const d = new Date(new Date('2025-05-30T00:00:00+09:00').getTime() + (parseInt(match[1], 10) - 1) * 24 * 60 * 60 * 1000);
+                const d = new Date(new Date('2026-05-30T00:00:00+09:00').getTime() + (parseInt(match[1], 10) - 1) * 24 * 60 * 60 * 1000);
                 const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
                 return `${kst.getUTCFullYear()}.${String(kst.getUTCMonth() + 1).padStart(2, '0')}.${String(kst.getUTCDate()).padStart(2, '0')}`;
               })()}

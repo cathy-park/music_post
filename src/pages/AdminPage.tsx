@@ -5,8 +5,8 @@ import { isSupabaseReady, supabase } from '../lib/supabase';
 import { deleteEntry, getAdminData, saveBook, saveEntry, createBook, deleteBook } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
 
-/** 기준일: 2025-05-30 = DAY 1 */
-const BASE_DATE = new Date('2025-05-30T00:00:00+09:00');
+/** 기준일: 2026-05-30 = DAY 1 */
+const BASE_DATE = new Date('2026-05-30T00:00:00+09:00');
 
 function calcDayLabel(dateStr: string): { label: string; dayNum: number } {
   if (!dateStr) return { label: '', dayNum: 0 };
@@ -420,7 +420,7 @@ export default function AdminPage() {
                   <input
                     type="date"
                     value={labelToDateStr(selected.dateLabel)}
-                    min="2025-05-30"
+                    min="2026-05-30"
                     onChange={(e) => {
                       const { label, dayNum } = calcDayLabel(e.target.value);
                       updateSelected({ dateLabel: label, order: dayNum });
