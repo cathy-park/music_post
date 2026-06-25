@@ -1,7 +1,6 @@
 import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import AudioPlayer from '../components/AudioPlayer';
 import EmptyAudio from '../components/EmptyAudio';
 import EntryCard from '../components/EntryCard';
 import InstallPrompt from '../components/InstallPrompt';
