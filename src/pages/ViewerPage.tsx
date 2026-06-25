@@ -8,6 +8,7 @@ import InstallPrompt from '../components/InstallPrompt';
 import { sampleBook } from '../data';
 import { getViewerData } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
+import AudioPlayer, { type AudioPlayerRef } from '../components/AudioPlayer';
 
 // ── LRC 파서 ─────────────────────────────────────────
 type LRCLine = { time: number | null; text: string };
@@ -79,14 +80,31 @@ function getProportionalIndex(rawLines: string[], current: number, duration: num
   return lastLyricIdx;
 }
 
+function getProportionalTimes(rawLines: string[], duration: number): number[] {
+  const weights: number[] = rawLines.map((l) => {
+    if (!l.trim()) return 0.4;
+    if (isSectionHeader(l)) return 0;
+    return 1.0;
+  });
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let accumulated = 0;
+  return rawLines.map((_, i) => {
+    const t = totalWeight === 0 ? 0 : (accumulated / totalWeight) * duration;
+    accumulated += weights[i];
+    return t;
+  });
+}
+
 function useLyricsSync(lyrics: string, current: number, duration: number) {
   return useMemo(() => {
     if (isLRC(lyrics)) {
       const lrcLines = parseLRC(lyrics);
-      return { lines: lrcLines.map((l) => l.text), activeIdx: getLRCIndex(lrcLines, current) };
+      return { lines: lrcLines, activeIdx: getLRCIndex(lrcLines, current) };
     }
     const rawLines = lyrics.split('\n');
-    return { lines: rawLines, activeIdx: getProportionalIndex(rawLines, current, duration) };
+    const pTimes = getProportionalTimes(rawLines, duration);
+    const combined = rawLines.map((text, i) => ({ text, time: pTimes[i] }));
+    return { lines: combined, activeIdx: getProportionalIndex(rawLines, current, duration) };
   }, [lyrics, current, duration]);
 }
 
@@ -94,10 +112,12 @@ function SyncedLyrics({
   lines,
   activeIdx,
   scrollContainer,
+  onLineClick,
 }: {
-  lines: string[];
+  lines: { text: string; time: number | null }[];
   activeIdx: number;
   scrollContainer?: React.RefObject<HTMLDivElement>;
+  onLineClick?: (time: number) => void;
 }) {
   const activeRef = useRef<HTMLSpanElement | null>(null);
 
@@ -120,16 +140,20 @@ function SyncedLyrics({
       {lines.map((line, i) => {
         const isActive = i === activeIdx;
         const isPast = i < activeIdx;
-        const isEmpty = !line.trim();
+        const isEmpty = !line.text.trim();
         return isEmpty ? (
           <span key={i} className="lyrics-line-gap" />
         ) : (
           <span
             key={i}
             ref={isActive ? activeRef : null}
-            className={`lyrics-line${isActive ? ' active' : isPast ? ' past' : ''}`}
+            className={`lyrics-line${isActive ? ' active' : isPast ? ' past' : ''}${onLineClick && line.time !== null ? ' clickable' : ''}`}
+            onClick={() => {
+              if (onLineClick && line.time !== null) onLineClick(line.time);
+            }}
+            style={{ cursor: onLineClick && line.time !== null ? 'pointer' : 'default' }}
           >
-            {line}
+            {line.text}
           </span>
         );
       })}
@@ -149,6 +173,13 @@ export default function ViewerPage() {
   const [audioProgress, setAudioProgress] = useState({ current: 0, duration: 0 });
   const [autoPlayNext, setAutoPlayNext] = useState(false);
   const readingScrollRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<AudioPlayerRef>(null);
+
+  const handleLineClick = useCallback((time: number) => {
+    if (playerRef.current) {
+      playerRef.current.seekTo(time);
+    }
+  }, []);
 
   useEffect(() => {
     if (readingScrollRef.current) {
@@ -312,6 +343,7 @@ export default function ViewerPage() {
                 <div className="player-zone">
                   {activeEntry.audioUrl ? (
                     <AudioPlayer
+                      ref={playerRef}
                       src={activeEntry.audioUrl}
                       title={activeEntry.title}
                       autoPlay={autoPlayNext}
@@ -352,14 +384,14 @@ export default function ViewerPage() {
                         const { lines, activeIdx } = syncData;
                         
                         if (activeIdx < 0) {
-                          const firstLine = lines.find(l => l.trim());
+                          const firstLine = lines.find(l => l.text.trim());
                           if (firstLine) {
-                            return <p className="lyric-pop" style={{ opacity: 0.35, transform: 'none', animation: 'none' }}>{firstLine}</p>;
+                            return <p className="lyric-pop" style={{ opacity: 0.35, transform: 'none', animation: 'none' }}>{firstLine.text}</p>;
                           }
                           return <p style={{ opacity: 0.3 }}>🎵</p>;
                         }
 
-                        const activeLine = lines[activeIdx]?.trim();
+                        const activeLine = lines[activeIdx]?.text.trim();
                         if (activeLine) {
                           return <p key={activeIdx} className="lyric-pop">{activeLine}</p>;
                         }
@@ -379,6 +411,7 @@ export default function ViewerPage() {
                       lines={syncData.lines}
                       activeIdx={syncData.activeIdx}
                       scrollContainer={readingScrollRef}
+                      onLineClick={handleLineClick}
                     />
                   </section>
                 </div>

@@ -1,5 +1,5 @@
 import { Pause, Play, Volume2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { resolveAudioUrl } from '../lib/idb';
 
 function formatTime(seconds: number): string {
@@ -9,6 +9,10 @@ function formatTime(seconds: number): string {
   return `${minutes}:${rest}`;
 }
 
+export type AudioPlayerRef = {
+  seekTo: (time: number) => void;
+};
+
 type Props = {
   src: string;
   title: string;
@@ -17,12 +21,20 @@ type Props = {
   onEnded?: () => void;
 };
 
-export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded }: Props) {
-  const ref = useRef<HTMLAudioElement | null>(null);
+const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, autoPlay, onProgress, onEnded }, ref) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [resolvedSrc, setResolvedSrc] = useState<string>('');
+
+  useImperativeHandle(ref, () => ({
+    seekTo: (time: number) => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = time;
+      }
+    }
+  }));
 
   useEffect(() => {
     let active = true;
@@ -38,22 +50,22 @@ export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded 
     setPlaying(false);
     setCurrent(0);
     setDuration(0);
-    if (ref.current) {
-      ref.current.pause();
-      ref.current.load();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.load();
     }
   }, [resolvedSrc]);
 
   const toggle = async () => {
-    if (!resolvedSrc || !ref.current) return;
-    if (playing) ref.current.pause();
-    else await ref.current.play();
+    if (!resolvedSrc || !audioRef.current) return;
+    if (playing) audioRef.current.pause();
+    else await audioRef.current.play();
   };
 
   return (
     <div className="player-shell" aria-label={`${title} 오디오 플레이어`}>
       <audio
-        ref={ref}
+        ref={audioRef}
         src={resolvedSrc || undefined}
         autoPlay={autoPlay}
         onPlay={() => setPlaying(true)}
@@ -95,7 +107,7 @@ export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded 
               onChange={(event) => {
                 const next = Number(event.target.value);
                 setCurrent(next);
-                if (ref.current) ref.current.currentTime = next;
+                if (audioRef.current) audioRef.current.currentTime = next;
               }}
             />
             <span className="player-time">{formatTime(current)} / {formatTime(duration)}</span>
@@ -104,4 +116,8 @@ export default function AudioPlayer({ src, title, autoPlay, onProgress, onEnded 
       </div>
     </div>
   );
-}
+});
+
+AudioPlayer.displayName = 'AudioPlayer';
+
+export default AudioPlayer;
