@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/manifest", "destination": "/api/manifest" },
     { "source": "/v/:token", "destination": "/api/share?token=:token" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]

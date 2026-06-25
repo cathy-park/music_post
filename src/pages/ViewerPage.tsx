@@ -176,12 +176,22 @@ export default function ViewerPage() {
       .catch((err: Error) => setError(err.message));
   }, [token]);
 
-  // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정
+  // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정 + PWA manifest 동적 주입
   useEffect(() => {
     if (book) {
       document.title = book.title || '나의 음악일기';
+
+      // 동적 manifest: 뷰어 토큰과 책 제목으로 start_url / 앱 이름 설정
+      const manifestUrl = `/api/manifest?token=${encodeURIComponent(token)}&title=${encodeURIComponent(book.title || '음악일기')}`;
+      let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'manifest';
+        document.head.appendChild(link);
+      }
+      link.href = manifestUrl;
     }
-  }, [book]);
+  }, [book, token]);
 
   // 곡이 바뀌면 진행도 초기화
   useEffect(() => {
