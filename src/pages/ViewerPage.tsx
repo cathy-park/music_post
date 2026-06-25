@@ -106,12 +106,12 @@ function SyncedLyrics({
     const container = scrollContainer?.current;
     if (!el || !container) return;
 
-    const elTop = el.offsetTop;
-    const elHeight = el.offsetHeight;
-    const containerHeight = container.clientHeight;
-    // 활성 라인을 컨테이너 중앙에 위치시키는 scrollTop 계산
-    const targetScrollTop = elTop - containerHeight / 2 + elHeight / 2;
-    container.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+    // getBoundingClientRect()로 뷰포트 기준 상대 위치 계산 → offsetParent 중첩 오차 없음
+    const containerRect = container.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const relativeTop = elRect.top - containerRect.top; // 현재 화면에서 el이 container 상단으로부터 얼마나 떨어졌는지
+    const targetScrollTop = container.scrollTop + relativeTop - container.clientHeight / 2 + elRect.height / 2;
+    container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
   }, [activeIdx, scrollContainer]);
 
   return (
