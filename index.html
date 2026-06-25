@@ -14,9 +14,37 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>우리의 작은 세계</title>
+    <style>
+      #global-splash {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: #fbf6f1; z-index: 99999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        transition: opacity 0.4s ease, visibility 0.4s;
+      }
+      .splash-icon {
+        width: 80px; height: 80px; margin-bottom: 24px;
+        animation: pulseHeart 1.5s infinite ease-in-out;
+      }
+      .splash-text {
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #e77787; font-weight: 700; font-size: 14px; letter-spacing: 0.1em;
+      }
+      @keyframes pulseHeart {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.1); opacity: 1; }
+      }
+      /* React 앱이 렌더링되어 #root가 비어있지 않으면 스플래시를 서서히 숨김 */
+      #root:not(:empty) + #global-splash {
+        opacity: 0; pointer-events: none; visibility: hidden;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="global-splash">
+      <img src="/apple-touch-icon.png" alt="앱 아이콘" class="splash-icon" />
+      <div class="splash-text">음악일기 여는 중...</div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
