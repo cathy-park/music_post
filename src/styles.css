@@ -1048,3 +1048,51 @@ textarea { resize: vertical; line-height: 1.6; }
   .play-button { width: 34px; height: 34px; }
   .lyrics { font-size: 10px; line-height: 1.62; }
 }
+
+/* ── PWA 설치 프롬프트 ─────────────────────────────── */
+.install-prompt {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(223, 113, 131, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(200, 100, 130, 0.18), 0 2px 8px rgba(0,0,0,0.06);
+  z-index: 9999;
+  animation: installSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes installSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.install-prompt-icon img {
+  width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+}
+.install-prompt-body { flex: 1; min-width: 0; }
+.install-prompt-title { margin: 0 0 2px; font-size: 13px; font-weight: 750; color: #3a2d2b; }
+.install-prompt-desc { margin: 0; font-size: 11.5px; color: #8a6f6f; line-height: 1.5; }
+.install-prompt-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #e8728a, #c96bbf);
+  color: #fff; border: none; border-radius: 999px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0; transition: opacity 0.2s;
+}
+.install-prompt-btn:hover { opacity: 0.85; }
+.install-prompt-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border: none;
+  background: rgba(0,0,0,0.06); border-radius: 50%;
+  cursor: pointer; color: #999; flex-shrink: 0; transition: background 0.2s;
+}
+.install-prompt-close:hover { background: rgba(0,0,0,0.12); }

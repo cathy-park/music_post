@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import AudioPlayer from '../components/AudioPlayer';
 import EmptyAudio from '../components/EmptyAudio';
 import EntryCard from '../components/EntryCard';
+import InstallPrompt from '../components/InstallPrompt';
 import { sampleBook } from '../data';
 import { getViewerData } from '../lib/repository';
 import type { DiaryBook, DiaryEntry } from '../types';
@@ -388,7 +389,7 @@ export default function ViewerPage() {
           </section>
         </section>
       </div>
-
+      <InstallPrompt />
     </main>
   );
 }
