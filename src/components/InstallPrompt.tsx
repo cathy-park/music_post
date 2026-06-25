@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react';
-import { X, Share, Compass } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Share, Compass, Download } from 'lucide-react';
 
 const DISMISSED_KEY = 'pwa_install_dismissed';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 export default function InstallPrompt() {
   const [show, setShow] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isKakao, setIsKakao] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
     // 이미 앱으로 실행 중이거나(standalone), 닫은 적이 있으면 표시 안 함
@@ -23,6 +30,7 @@ export default function InstallPrompt() {
 
     setIsIOS(ios);
     setIsKakao(kakao);
+    setIsAndroid(android);
 
     // 1. 카카오톡 인앱 브라우저 처리
     if (kakao) {
@@ -39,16 +47,36 @@ export default function InstallPrompt() {
 
     // 2. 일반 브라우저 처리
     if (ios) {
-      // 일반 iOS 사파리: 설치 안내 배너 띄움
+      // 일반 iOS 사파리: 3초 후 안내 배너 띄움
       const t = setTimeout(() => setShow(true), 3000);
       return () => clearTimeout(t);
-    } else {
-      // 일반 안드로이드(크롬/삼성인터넷 등): 
-      // 브라우저 자체적으로 설치 팝업/인포바가 상단/하단에 뜨므로, 커스텀 배너를 띄우지 않아 2중 표시 방지
-      // 아무것도 하지 않음 (show = false)
-      return;
-    }
+    } 
+    
+    // 일반 안드로이드(크롬 등): beforeinstallprompt 이벤트 대기
+    const handler = (e: Event) => {
+      // 브라우저 기본 설치 배너(미니 인포바)가 뜨는 것을 막음!
+      e.preventDefault(); 
+      deferredPrompt.current = e as BeforeInstallPromptEvent;
+      
+      // 우리 커스텀 배너를 3초 후 띄움
+      const t = setTimeout(() => setShow(true), 3000);
+      return () => clearTimeout(t);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
+
+  const handleInstall = async () => {
+    if (deferredPrompt.current) {
+      // 사용자가 우리 버튼을 누르면, 브라우저 시스템 진짜 설치 다이얼로그 호출
+      await deferredPrompt.current.prompt();
+      const { outcome } = await deferredPrompt.current.userChoice;
+      localStorage.setItem(DISMISSED_KEY, '1'); // 설치 수락/거절 모두 영구 저장
+      setShow(false);
+      deferredPrompt.current = null;
+    }
+  };
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISSED_KEY, '1');
@@ -74,12 +102,22 @@ export default function InstallPrompt() {
           <>
             <p className="install-prompt-title">홈 화면에 추가하기</p>
             <p className="install-prompt-desc">
-              <Share size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
-              공유 버튼 → <strong>'홈 화면에 추가'</strong> 를 탭하세요
+              {isIOS ? (
+                <><Share size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />공유 버튼 → <strong>'홈 화면에 추가'</strong> 를 탭하세요</>
+              ) : (
+                <>앱처럼 설치해서 더 편하게 즐겨요 💌</>
+              )}
             </p>
           </>
         )}
       </div>
+      {/* 안드로이드이고 카톡이 아닐 때만 실제 설치 버튼 표시 */}
+      {isAndroid && !isKakao && (
+        <button className="install-prompt-btn" onClick={handleInstall}>
+          <Download size={14} />
+          설치
+        </button>
+      )}
       <button className="install-prompt-close" onClick={handleDismiss} aria-label="닫기">
         <X size={16} />
       </button>
