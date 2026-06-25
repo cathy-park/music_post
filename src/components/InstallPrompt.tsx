@@ -21,7 +21,7 @@ export default function InstallPrompt() {
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as unknown as { standalone?: boolean }).standalone === true;
     if (isStandalone) return;
-    if (localStorage.getItem(DISMISSED_KEY)) return;
+    if (sessionStorage.getItem(DISMISSED_KEY)) return;
 
     const ua = navigator.userAgent.toLowerCase();
     const kakao = /kakaotalk/i.test(ua);
@@ -59,8 +59,7 @@ export default function InstallPrompt() {
       deferredPrompt.current = e as BeforeInstallPromptEvent;
       
       // 우리 커스텀 배너를 3초 후 띄움
-      const t = setTimeout(() => setShow(true), 3000);
-      return () => clearTimeout(t);
+      setTimeout(() => setShow(true), 3000);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -72,14 +71,14 @@ export default function InstallPrompt() {
       // 사용자가 우리 버튼을 누르면, 브라우저 시스템 진짜 설치 다이얼로그 호출
       await deferredPrompt.current.prompt();
       const { outcome } = await deferredPrompt.current.userChoice;
-      localStorage.setItem(DISMISSED_KEY, '1'); // 설치 수락/거절 모두 영구 저장
+      sessionStorage.setItem(DISMISSED_KEY, '1'); // 설치 수락/거절 모두 영구 저장
       setShow(false);
       deferredPrompt.current = null;
     }
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(DISMISSED_KEY, '1');
+    sessionStorage.setItem(DISMISSED_KEY, '1');
     setShow(false);
   };
 
