@@ -19,7 +19,7 @@ export default function InstallPrompt() {
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as unknown as { standalone?: boolean }).standalone === true;
     if (isStandalone) return;
-    if (sessionStorage.getItem(DISMISSED_KEY)) return;
+    if (localStorage.getItem(DISMISSED_KEY)) return;
 
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as unknown as { MSStream?: unknown }).MSStream;
     setIsIOS(ios);
@@ -45,15 +45,14 @@ export default function InstallPrompt() {
     if (deferredPrompt.current) {
       await deferredPrompt.current.prompt();
       const { outcome } = await deferredPrompt.current.userChoice;
-      if (outcome === 'accepted') {
-        setShow(false);
-      }
+      localStorage.setItem(DISMISSED_KEY, '1'); // 설치 수락/거절 모두 다시 안 뜨게
+      setShow(false);
       deferredPrompt.current = null;
     }
   };
 
   const handleDismiss = () => {
-    sessionStorage.setItem(DISMISSED_KEY, '1');
+    localStorage.setItem(DISMISSED_KEY, '1');
     setShow(false);
   };
 

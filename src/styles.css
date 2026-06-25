@@ -1052,7 +1052,7 @@ textarea { resize: vertical; line-height: 1.6; }
 /* ── PWA 설치 프롬프트 ─────────────────────────────── */
 .install-prompt {
   position: fixed;
-  bottom: 20px;
+  top: 16px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 32px);
@@ -1068,10 +1068,10 @@ textarea { resize: vertical; line-height: 1.6; }
   border-radius: 20px;
   box-shadow: 0 8px 32px rgba(200, 100, 130, 0.18), 0 2px 8px rgba(0,0,0,0.06);
   z-index: 9999;
-  animation: installSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: installSlideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
-@keyframes installSlideUp {
-  from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+@keyframes installSlideDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 .install-prompt-icon img {
