@@ -453,6 +453,8 @@ a { color: inherit; text-decoration: none; }
   transition: all 0.2s ease;
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 .nav-card:hover {
   background: rgba(255, 255, 255, 0.8);
@@ -475,7 +477,9 @@ a { color: inherit; text-decoration: none; }
   flex-direction: row;
   align-items: center;
   gap: 6px;
+  flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 .nav-info strong {
   font-size: 11px;
@@ -555,6 +559,8 @@ a { color: inherit; text-decoration: none; }
   line-height: 1.5;
   letter-spacing: -0.02em;
   word-break: keep-all;
+  overflow-wrap: break-word;
+  max-width: 100%;
   animation: lyricPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
@@ -941,6 +947,8 @@ textarea { resize: vertical; line-height: 1.6; }
     flex: 1;
     min-height: 0;
     height: auto;
+    width: 100%;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -993,6 +1001,8 @@ textarea { resize: vertical; line-height: 1.6; }
   .playlist-note { display: none; }
   .detail-panel {
     flex: 1;
+    width: 100%;
+    max-width: 100%;
     min-height: 0;
     gap: 7px;
     padding: 10px;
