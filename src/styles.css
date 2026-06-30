@@ -308,6 +308,25 @@ a { color: inherit; text-decoration: none; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.download-button {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: #f7eff0;
+  color: #bf6e79;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+.download-button:hover {
+  background: #f0e1e3;
+  color: #a85863;
+  transform: translateY(-1px);
+}
 .days-badge {
   flex: 0 0 auto;
   width: 54px;

@@ -1,4 +1,4 @@
-import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import EmptyAudio from '../components/EmptyAudio';
@@ -6,6 +6,7 @@ import EntryCard from '../components/EntryCard';
 import InstallPrompt from '../components/InstallPrompt';
 import { sampleBook } from '../data';
 import { getViewerData } from '../lib/repository';
+import { downloadStrippedAudio } from '../lib/download';
 import type { DiaryBook, DiaryEntry } from '../types';
 import AudioPlayer, { type AudioPlayerRef } from '../components/AudioPlayer';
 
@@ -337,6 +338,16 @@ export default function ViewerPage() {
                     <h2>{activeEntry.title}</h2>
                     <p>{activeEntry.subtitle}</p>
                   </div>
+                  {activeEntry.audioUrl && (
+                    <button 
+                      className="download-button" 
+                      onClick={() => downloadStrippedAudio(activeEntry.audioUrl!, activeEntry.title)}
+                      aria-label="음악 파일 다운로드"
+                      title="음악 파일 다운로드"
+                    >
+                      <Download size={18} strokeWidth={2.5} />
+                    </button>
+                  )}
                 </div>
 
                 <div className="player-zone">
