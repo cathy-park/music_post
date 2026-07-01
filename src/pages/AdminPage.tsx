@@ -159,7 +159,16 @@ export default function AdminPage() {
     updateSelected({ lyrics: lrc });
     setTapMode(false);
     setMessage('✅ LRC 타임스탬프가 적용됐어요! 저장 버튼을 눌러주세요.');
-  }, [tapLines]);
+  }, [tapLines, updateSelected]);
+
+  const handleCopy = (text: string, label: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setMessage(`${label} 복사 완료!`);
+    }).catch(() => {
+      setMessage('복사에 실패했습니다.');
+    });
+  };
 
   const nonEmptyTapLines = useMemo(() => tapLines.filter(l => l.trim()), [tapLines]);
 
@@ -457,18 +466,45 @@ export default function AdminPage() {
                 <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0])} />
               </label>
 
-              <label>가사
+              <label>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ color: '#44506a', fontSize: 13, fontWeight: 650 }}>가사</span>
+                  <span style={{ color: '#44506a', fontSize: 13, fontWeight: 650 }}>프롬프트 (관리자 전용)</span>
                   <button
                     type="button"
                     className="ghost-button"
                     style={{ fontSize: 12, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
-                    onClick={startTapMode}
-                    title="음악을 재생하면서 줄마다 탭해서 LRC 타임스탬프 자동 생성"
+                    onClick={() => handleCopy(selected.prompt || '', '프롬프트')}
+                    title="프롬프트 복사"
                   >
-                    <Radio size={13} /> 타임스탬프 기록
+                    <Copy size={13} /> 복사
                   </button>
+                </div>
+                <textarea className="lyrics-editor" rows={6} value={selected.prompt || ''} onChange={(e) => updateSelected({ prompt: e.target.value })} placeholder="여기에 음악 생성 시 사용한 프롬프트를 적어둘 수 있습니다." />
+              </label>
+
+              <label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, marginTop: 12 }}>
+                  <span style={{ color: '#44506a', fontSize: 13, fontWeight: 650 }}>가사</span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      style={{ fontSize: 12, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
+                      onClick={() => handleCopy(selected.lyrics, '가사')}
+                      title="가사 복사"
+                    >
+                      <Copy size={13} /> 복사
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      style={{ fontSize: 12, padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
+                      onClick={startTapMode}
+                      title="음악을 재생하면서 줄마다 탭해서 LRC 타임스탬프 자동 생성"
+                    >
+                      <Radio size={13} /> 타임스탬프 기록
+                    </button>
+                  </div>
                 </div>
                 <textarea className="lyrics-editor" rows={18} value={selected.lyrics} onChange={(e) => updateSelected({ lyrics: e.target.value })} />
               </label>

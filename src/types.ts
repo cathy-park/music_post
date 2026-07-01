@@ -23,4 +23,5 @@ export type DiaryEntry = {
   order: number;
   published: boolean;
   icon?: string;
+  prompt?: string;
 };
