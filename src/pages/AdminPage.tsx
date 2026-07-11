@@ -62,6 +62,21 @@ export default function AdminPage() {
 
   // Access Log Modal State
   const [isLogViewerOpen, setIsLogViewerOpen] = useState(false);
+  const [isAdminLoggingOn, setIsAdminLoggingOn] = useState(() => 
+    localStorage.getItem('admin_logging_enabled') === 'true'
+  );
+
+  const toggleAdminLogging = () => {
+    const nextVal = !isAdminLoggingOn;
+    setIsAdminLoggingOn(nextVal);
+    if (nextVal) {
+      localStorage.setItem('admin_logging_enabled', 'true');
+      setMessage('이제부터 내 접속 기록도 로그에 남습니다.');
+    } else {
+      localStorage.removeItem('admin_logging_enabled');
+      setMessage('이제부터 내 접속 기록은 남지 않습니다 (투명인간).');
+    }
+  };
 
   const [tapMode, setTapMode] = useState(false);
   const [tapStep, setTapStep] = useState(0);
@@ -322,7 +337,24 @@ export default function AdminPage() {
       <header className="admin-header">
         <div>
           <span className="eyebrow">ADMIN</span>
-          <h1>음악일기 관리</h1>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            음악일기 관리
+            <button 
+              onClick={toggleAdminLogging}
+              style={{
+                fontSize: 12,
+                padding: '4px 8px',
+                borderRadius: 12,
+                border: 'none',
+                background: isAdminLoggingOn ? '#e5edff' : '#f0f0f0',
+                color: isAdminLoggingOn ? '#3b82f6' : '#888',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              내 접속 기록: {isAdminLoggingOn ? 'ON (기록됨)' : 'OFF (투명인간)'}
+            </button>
+          </h1>
         </div>
         <div className="admin-actions">
           <button className="primary-button" style={{ background: '#5d6883', padding: '6px 12px' }} onClick={() => setIsLogViewerOpen(true)}>

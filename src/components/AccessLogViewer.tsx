@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { AccessLog } from '../types';
-import { X, Clock, Smartphone } from 'lucide-react';
+import { X, Clock, Smartphone, Music } from 'lucide-react';
 
 export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
   const [logs, setLogs] = useState<AccessLog[]>([]);
@@ -50,6 +50,7 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                 <tr style={{ borderBottom: '2px solid #eee' }}>
                   <th style={{ padding: '10px 8px', color: '#666' }}>접속 일시</th>
                   <th style={{ padding: '10px 8px', color: '#666' }}><Smartphone size={14} style={{ verticalAlign: 'middle', marginRight: 4 }}/>기기 정보</th>
+                  <th style={{ padding: '10px 8px', color: '#666', width: '35%' }}><Music size={14} style={{ verticalAlign: 'middle', marginRight: 4 }}/>들은 노래</th>
                   <th style={{ padding: '10px 8px', color: '#666' }}><Clock size={14} style={{ verticalAlign: 'middle', marginRight: 4 }}/>체류 시간</th>
                 </tr>
               </thead>
@@ -62,6 +63,7 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                       })}
                     </td>
                     <td style={{ padding: '10px 8px', color: '#555' }}>{log.device_info}</td>
+                    <td style={{ padding: '10px 8px', color: '#888', fontSize: 12 }}>{log.listened_songs || '-'}</td>
                     <td style={{ padding: '10px 8px', color: '#d75a68', fontWeight: 600 }}>{formatDuration(log.duration_sec)}</td>
                   </tr>
                 ))}

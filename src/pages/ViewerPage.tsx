@@ -164,7 +164,13 @@ function SyncedLyrics({
 
 // ── ViewerPage ───────────────────────────────────────
 export default function ViewerPage() {
-  useAccessLog(); // 방문자 접속 및 체류 시간 기록
+  const [songCounts, setSongCounts] = useState<Record<string, number>>({});
+  
+  const formattedSongs = useMemo(() => {
+    return Object.entries(songCounts).map(([title, count]) => `${title}(${count})`);
+  }, [songCounts]);
+
+  useAccessLog(formattedSongs); // 방문자 접속 및 체류 시간 기록
 
   const { token = sampleBook.shareToken } = useParams();
   const [book, setBook] = useState<DiaryBook | null>(null);
@@ -202,14 +208,33 @@ export default function ViewerPage() {
   );
 
   useEffect(() => {
-    getViewerData(token)
-      .then((data) => {
+    async function load() {
+      try {
+        const data = await getViewerData(token);
         setBook(data.book);
-        setEntries(data.entries);
-        setActiveId(data.entries[0]?.id ?? '');
-      })
-      .catch((err: Error) => setError(err.message));
+        const published = data.entries.filter(e => e.published).sort((a, b) => a.order - b.order);
+        setEntries(published);
+        if (published.length > 0) {
+          setActiveId(published[0].id);
+        }
+      } catch (err: any) {
+        setError(err.message || '데이터를 불러오지 못했습니다.');
+      }
+    }
+    load();
   }, [token]);
+
+  // 클릭하거나 재생한 곡 추적 (카운트)
+  useEffect(() => {
+    if (activeEntry && activeEntry.title) {
+      setSongCounts(prev => {
+        return {
+          ...prev,
+          [activeEntry.title]: (prev[activeEntry.title] || 0) + 1
+        };
+      });
+    }
+  }, [activeEntry]);
 
   // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정 + PWA manifest 동적 주입
   useEffect(() => {
