@@ -3,6 +3,8 @@ import { FormEvent, useEffect, useRef, useMemo, useState, useCallback } from 're
 import { resolveAudioUrl } from '../lib/idb';
 import { isSupabaseReady, supabase } from '../lib/supabase';
 import { deleteEntry, getAdminData, saveBook, saveEntry, createBook, deleteBook } from '../lib/repository';
+import AccessLogViewer from '../components/AccessLogViewer';
+import { Activity } from 'lucide-react';
 import type { DiaryBook, DiaryEntry } from '../types';
 
 /** 기준일: 2026-05-30 = DAY 1 */
@@ -57,6 +59,9 @@ export default function AdminPage() {
   const [editingCategory, setEditingCategory] = useState<DiaryBook | null>(null);
   const [editingCatTitle, setEditingCatTitle] = useState('');
   const [editingCatSubtitle, setEditingCatSubtitle] = useState('');
+
+  // Access Log Modal State
+  const [isLogViewerOpen, setIsLogViewerOpen] = useState(false);
 
   const [tapMode, setTapMode] = useState(false);
   const [tapStep, setTapStep] = useState(0);
@@ -320,6 +325,9 @@ export default function AdminPage() {
           <h1>음악일기 관리</h1>
         </div>
         <div className="admin-actions">
+          <button className="primary-button" style={{ background: '#5d6883', padding: '6px 12px' }} onClick={() => setIsLogViewerOpen(true)}>
+            <Activity size={16} /> 접속 로그
+          </button>
           {activeBook && (
             <>
               <button
@@ -548,6 +556,45 @@ export default function AdminPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* 카테고리 편집 모달 */}
+      {editingCategory && (
+        <div className="modal-overlay" onClick={() => setEditingCategory(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2>카테고리 수정</h2>
+            <form onSubmit={saveEditingCategory}>
+              <div className="form-group" style={{ marginTop: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6, fontWeight: 600 }}>카테고리명 (제목)</label>
+                <input 
+                  type="text" 
+                  value={editingCatTitle} 
+                  onChange={e => setEditingCatTitle(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8 }}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ marginTop: 12 }}>
+                <label style={{ display: 'block', fontSize: 13, marginBottom: 6, fontWeight: 600 }}>부제목 / 설명</label>
+                <input 
+                  type="text" 
+                  value={editingCatSubtitle} 
+                  onChange={e => setEditingCatSubtitle(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: 8 }}
+                />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 24 }}>
+                <button type="button" className="ghost-button" onClick={() => setEditingCategory(null)}>취소</button>
+                <button type="submit" className="primary-button">저장</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 접속 로그 뷰어 모달 */}
+      {isLogViewerOpen && (
+        <AccessLogViewer onClose={() => setIsLogViewerOpen(false)} />
       )}
 
       {message && <div className="toast">{message}</div>}

@@ -7,6 +7,7 @@ import InstallPrompt from '../components/InstallPrompt';
 import { sampleBook } from '../data';
 import { getViewerData } from '../lib/repository';
 import { downloadStrippedAudio } from '../lib/download';
+import { useAccessLog } from '../hooks/useAccessLog';
 import type { DiaryBook, DiaryEntry } from '../types';
 import AudioPlayer, { type AudioPlayerRef } from '../components/AudioPlayer';
 
@@ -163,6 +164,8 @@ function SyncedLyrics({
 
 // ── ViewerPage ───────────────────────────────────────
 export default function ViewerPage() {
+  useAccessLog(); // 방문자 접속 및 체류 시간 기록
+
   const { token = sampleBook.shareToken } = useParams();
   const [book, setBook] = useState<DiaryBook | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
