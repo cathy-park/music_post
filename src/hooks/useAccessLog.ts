@@ -10,32 +10,53 @@ export function useAccessLog() {
   useEffect(() => {
     if (!isSupabaseReady || !supabase) return;
 
-    const deviceInfo = parseUserAgent(navigator.userAgent);
     const sid = sessionId.current;
 
-    // 1. 최초 진입 시 로그 생성
-    if (!hasInserted.current) {
+    const initLog = async () => {
+      if (hasInserted.current) return;
       hasInserted.current = true;
+      
+      let baseDevice = parseUserAgent(navigator.userAgent);
+      let locationStr = '';
+      
+      try {
+        // IP API를 이용해 대략적인 위치 파악
+        const res = await fetch('https://ipapi.co/json/');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.city && data.country_code) {
+            locationStr = ` [${data.city}, ${data.country_code}]`;
+          }
+        }
+      } catch (err) {
+        console.warn('위치 정보 가져오기 실패:', err);
+      }
+
+      const finalDeviceInfo = baseDevice + locationStr;
+
       supabase.from('access_logs').insert({
         id: sid,
-        device_info: deviceInfo,
+        device_info: finalDeviceInfo,
         duration_sec: 0,
       }).then(({ error }) => {
         if (error) console.error('Failed to insert access log:', error);
       });
-    }
+    };
+
+    initLog();
 
     // 2. 체류 시간 업데이트 함수
     const updateDuration = () => {
       const durationSec = Math.floor((Date.now() - startTime.current) / 1000);
-      // Beacon API 방식은 아니지만, 모바일 대응을 위해 간단하게 처리
       supabase?.from('access_logs')
         .update({ duration_sec: durationSec })
         .eq('id', sid)
         .then(() => {});
     };
 
-    // 3. 페이지 닫힘, 숨김 처리 이벤트 등록
+    // 모바일 등에서 페이지 닫힘 이벤트가 불안정하므로 10초 주기로 핑(Ping) 날리기
+    const intervalId = setInterval(updateDuration, 10000);
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         updateDuration();
@@ -46,8 +67,8 @@ export function useAccessLog() {
     window.addEventListener('beforeunload', updateDuration);
     window.addEventListener('pagehide', updateDuration);
 
-    // 언마운트 시(SPA 라우팅 전환 시)에도 업데이트
     return () => {
+      clearInterval(intervalId);
       updateDuration();
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', updateDuration);
