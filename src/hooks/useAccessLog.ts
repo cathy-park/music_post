@@ -29,7 +29,7 @@ export function useAccessLog() {
     const updateDuration = () => {
       const durationSec = Math.floor((Date.now() - startTime.current) / 1000);
       // Beacon API 방식은 아니지만, 모바일 대응을 위해 간단하게 처리
-      supabase.from('access_logs')
+      supabase?.from('access_logs')
         .update({ duration_sec: durationSec })
         .eq('id', sid)
         .then(() => {});
