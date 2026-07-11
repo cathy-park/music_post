@@ -24,8 +24,10 @@ export function useAccessLog() {
         const res = await fetch('https://ipapi.co/json/');
         if (res.ok) {
           const data = await res.json();
-          if (data.city && data.country_code) {
-            locationStr = ` [${data.city}, ${data.country_code}]`;
+          const region = data.region ? `${data.region} ` : '';
+          const city = data.city ? `${data.city}` : '';
+          if (region || city) {
+            locationStr = ` [${region}${city}]`;
           }
         }
       } catch (err) {
