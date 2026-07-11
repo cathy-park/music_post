@@ -34,7 +34,7 @@ export function useAccessLog() {
 
       const finalDeviceInfo = baseDevice + locationStr;
 
-      supabase.from('access_logs').insert({
+      supabase?.from('access_logs').insert({
         id: sid,
         device_info: finalDeviceInfo,
         duration_sec: 0,
