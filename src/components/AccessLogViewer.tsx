@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { AccessLog } from '../types';
-import { X, Clock, Smartphone, Music, Trash2, RefreshCw } from 'lucide-react';
+import { X, Clock, Smartphone, Music, Trash2, RefreshCw, MapPin } from 'lucide-react';
 
 interface BookInfo {
   id: string;
@@ -9,8 +9,12 @@ interface BookInfo {
   shareToken: string;
 }
 
+interface AccessLogExt extends AccessLog {
+  location?: string;
+}
+
 export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
-  const [logs, setLogs] = useState<AccessLog[]>([]);
+  const [logs, setLogs] = useState<AccessLogExt[]>([]);
   const [loading, setLoading] = useState(true);
   const [books, setBooks] = useState<BookInfo[]>([]);
   const [activeToken, setActiveToken] = useState<string>('__all__');
@@ -84,6 +88,20 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
     return `${m}분 ${s}초`;
   };
 
+  /** device_info에서 [위치] 부분 분리 (기존 데이터 호환) */
+  const parseDeviceAndLocation = (log: AccessLogExt) => {
+    // 새로운 location 컬럼이 있으면 그대로 사용
+    if (log.location) {
+      return { device: log.device_info, location: log.location };
+    }
+    // 기존 데이터 호환: device_info에서 [위치] 분리
+    const match = log.device_info?.match(/^(.+?)\s*\[(.+)\]$/);
+    if (match) {
+      return { device: match[1].trim(), location: match[2] };
+    }
+    return { device: log.device_info, location: '' };
+  };
+
   // 집계 통계
   const totalVisits = logs.length;
   const avgDuration = totalVisits > 0
@@ -94,7 +112,7 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
-        style={{ maxWidth: 680, padding: 24, width: '95vw' }}
+        style={{ maxWidth: 780, padding: 24, width: '95vw' }}
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -166,9 +184,12 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                 <tr style={{ borderBottom: '2px solid #eee' }}>
                   <th style={{ padding: '10px 8px', color: '#666' }}>접속 일시</th>
                   <th style={{ padding: '10px 8px', color: '#666' }}>
-                    <Smartphone size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />기기 정보
+                    <Smartphone size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />기기
                   </th>
-                  <th style={{ padding: '10px 8px', color: '#666', width: '30%' }}>
+                  <th style={{ padding: '10px 8px', color: '#666' }}>
+                    <MapPin size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />위치
+                  </th>
+                  <th style={{ padding: '10px 8px', color: '#666', width: '28%' }}>
                     <Music size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />들은 노래
                   </th>
                   <th style={{ padding: '10px 8px', color: '#666' }}>
@@ -177,18 +198,45 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => (
-                  <tr key={log.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                    <td style={{ padding: '10px 8px', color: '#333' }}>
-                      {new Date(log.created_at).toLocaleString('ko-KR', {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}
-                    </td>
-                    <td style={{ padding: '10px 8px', color: '#555' }}>{log.device_info}</td>
-                    <td style={{ padding: '10px 8px', color: '#888', fontSize: 12 }}>{log.listened_songs || '-'}</td>
-                    <td style={{ padding: '10px 8px', color: '#d75a68', fontWeight: 600 }}>{formatDuration(log.duration_sec)}</td>
-                  </tr>
-                ))}
+                {logs.map((log) => {
+                  const { device, location } = parseDeviceAndLocation(log);
+                  return (
+                    <tr key={log.id} style={{ borderBottom: '1px solid #f0f0f0', verticalAlign: 'top' }}>
+                      <td style={{ padding: '10px 8px', color: '#333', whiteSpace: 'nowrap' }}>
+                        {new Date(log.created_at).toLocaleString('ko-KR', {
+                          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}
+                      </td>
+                      <td style={{ padding: '10px 8px', color: '#555', whiteSpace: 'nowrap' }}>{device}</td>
+                      <td style={{ padding: '10px 8px', color: '#888', fontSize: 12, whiteSpace: 'nowrap' }}>
+                        {location || '-'}
+                      </td>
+                      <td style={{ padding: '10px 8px', color: '#888', fontSize: 12 }}>
+                        {log.listened_songs ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            {log.listened_songs.split('\n').map((line, i) => {
+                              // "곡제목 - 1분 23초" 형식 파싱
+                              const dashIdx = line.lastIndexOf(' - ');
+                              if (dashIdx > 0) {
+                                const title = line.substring(0, dashIdx);
+                                const time = line.substring(dashIdx + 3);
+                                return (
+                                  <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                                    <span style={{ color: '#555', fontWeight: 500 }}>♪ {title}</span>
+                                    <span style={{ color: '#d75a68', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{time}</span>
+                                  </div>
+                                );
+                              }
+                              // 기존 쉼표 구분 형식 호환
+                              return <span key={i} style={{ color: '#555' }}>{line}</span>;
+                            })}
+                          </div>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '10px 8px', color: '#d75a68', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatDuration(log.duration_sec)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

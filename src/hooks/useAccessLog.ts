@@ -1,17 +1,34 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseReady } from '../lib/supabase';
 import { parseUserAgent } from '../lib/userAgent';
 
-export function useAccessLog(listenedSongs: string[] = [], token?: string) {
+/** 각 곡의 실제 재생 시간(초)을 추적하는 Map: title → 누적 재생 초 */
+export type SongPlayMap = Map<string, number>;
+
+/**
+ * 재생 시간 맵을 DB 저장용 문자열로 변환
+ * 형식: "곡제목 - 1분 23초\n곡제목2 - 45초" (줄바꿈 구분)
+ */
+function formatSongPlayMap(map: SongPlayMap): string | null {
+  if (map.size === 0) return null;
+  const lines: string[] = [];
+  for (const [title, sec] of map) {
+    if (sec < 1) continue; // 1초 미만은 무시
+    if (sec < 60) {
+      lines.push(`${title} - ${Math.floor(sec)}초`);
+    } else {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      lines.push(`${title} - ${m}분 ${s}초`);
+    }
+  }
+  return lines.length > 0 ? lines.join('\n') : null;
+}
+
+export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token?: string) {
   const sessionId = useRef(crypto.randomUUID());
   const startTime = useRef(Date.now());
   const hasInserted = useRef(false);
-  
-  // 최신 들은 노래 목록을 계속 유지
-  const listenedSongsRef = useRef(listenedSongs);
-  useEffect(() => {
-    listenedSongsRef.current = listenedSongs;
-  }, [listenedSongs]);
 
   useEffect(() => {
     if (!isSupabaseReady || !supabase) return;
@@ -38,18 +55,17 @@ export function useAccessLog(listenedSongs: string[] = [], token?: string) {
           const region = data.region ? `${data.region} ` : '';
           const city = data.city ? `${data.city}` : '';
           if (region || city) {
-            locationStr = ` [${region}${city}]`;
+            locationStr = `${region}${city}`.trim();
           }
         }
       } catch (err) {
         console.warn('위치 정보 가져오기 실패:', err);
       }
 
-      const finalDeviceInfo = baseDevice + locationStr;
-
       supabase?.from('access_logs').insert({
         id: sid,
-        device_info: finalDeviceInfo,
+        device_info: baseDevice,
+        location: locationStr || null,
         duration_sec: 0,
         share_token: token || null,
       }).then(({ error }) => {
@@ -59,10 +75,11 @@ export function useAccessLog(listenedSongs: string[] = [], token?: string) {
 
     initLog();
 
-    // 2. 체류 시간 및 들은 노래 업데이트 함수
+    // 체류 시간 및 들은 노래 업데이트 함수
     const updateDuration = () => {
       const durationSec = Math.floor((Date.now() - startTime.current) / 1000);
-      const songsStr = listenedSongsRef.current.length > 0 ? listenedSongsRef.current.join(', ') : null;
+      const currentMap = songPlayMapRef.current;
+      const songsStr = currentMap ? formatSongPlayMap(currentMap) : null;
       
       supabase?.from('access_logs')
         .update({ 
@@ -73,7 +90,7 @@ export function useAccessLog(listenedSongs: string[] = [], token?: string) {
         .then(() => {});
     };
 
-    // 모바일 등에서 페이지 닫힘 이벤트가 불안정하므로 5초 주기로 핑(Ping) 날리기
+    // 5초 주기로 업데이트
     const intervalId = setInterval(updateDuration, 5000);
 
     const handleVisibilityChange = () => {

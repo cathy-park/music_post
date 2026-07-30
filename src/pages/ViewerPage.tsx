@@ -7,7 +7,7 @@ import InstallPrompt from '../components/InstallPrompt';
 import { sampleBook } from '../data';
 import { getViewerData } from '../lib/repository';
 import { downloadStrippedAudio } from '../lib/download';
-import { useAccessLog } from '../hooks/useAccessLog';
+import { useAccessLog, type SongPlayMap } from '../hooks/useAccessLog';
 import type { DiaryBook, DiaryEntry } from '../types';
 import AudioPlayer, { type AudioPlayerRef } from '../components/AudioPlayer';
 
@@ -165,13 +165,12 @@ function SyncedLyrics({
 // ── ViewerPage ───────────────────────────────────────
 export default function ViewerPage() {
   const { token = sampleBook.shareToken } = useParams();
-  const [songCounts, setSongCounts] = useState<Record<string, number>>({});
   
-  const formattedSongs = useMemo(() => {
-    return Object.entries(songCounts).map(([title, count]) => `${title}(${count})`);
-  }, [songCounts]);
+  // 곡별 실제 재생 시간(초) 추적 Map
+  const songPlayMapRef = useRef<SongPlayMap>(new Map());
+  const lastTimeRef = useRef<{ title: string; time: number } | null>(null);
 
-  useAccessLog(formattedSongs, token); // 방문자 접속 및 체류 시간 기록
+  useAccessLog(songPlayMapRef, token); // 방문자 접속 및 체류 시간 기록
 
   const [book, setBook] = useState<DiaryBook | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -224,17 +223,22 @@ export default function ViewerPage() {
     load();
   }, [token]);
 
-  // 클릭하거나 재생한 곡 추적 (카운트)
-  useEffect(() => {
-    if (activeEntry && activeEntry.title) {
-      setSongCounts(prev => {
-        return {
-          ...prev,
-          [activeEntry.title]: (prev[activeEntry.title] || 0) + 1
-        };
-      });
+  // 실제 재생 시간 추적: onTimeUpdate 콜백에서 곡별 누적 재생 시간 기록
+  const handlePlayTimeTrack = useCallback((current: number, duration: number) => {
+    setAudioProgress({ current, duration });
+    
+    if (!activeEntry?.title) return;
+    const last = lastTimeRef.current;
+    if (last && last.title === activeEntry.title) {
+      const delta = current - last.time;
+      // 정상적인 재생 진행일 때만 누적 (0~2초 범위, seek 제외)
+      if (delta > 0 && delta < 2) {
+        const map = songPlayMapRef.current;
+        map.set(activeEntry.title, (map.get(activeEntry.title) || 0) + delta);
+      }
     }
-  }, [activeEntry]);
+    lastTimeRef.current = { title: activeEntry.title, time: current };
+  }, [activeEntry?.title]);
 
   // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정 + PWA manifest 동적 주입
   useEffect(() => {
@@ -256,11 +260,8 @@ export default function ViewerPage() {
   // 곡이 바뀌면 진행도 초기화
   useEffect(() => {
     setAudioProgress({ current: 0, duration: 0 });
+    lastTimeRef.current = null; // 곡 변경 시 추적 리셋
   }, [activeId]);
-
-  const handleProgress = useCallback((current: number, duration: number) => {
-    setAudioProgress({ current, duration });
-  }, []);
 
   const currentIndex = entries.findIndex(e => e.id === activeId);
   const prevEntry = currentIndex > 0 ? entries[currentIndex - 1] : null;
@@ -385,7 +386,7 @@ export default function ViewerPage() {
                       src={activeEntry.audioUrl}
                       title={activeEntry.title}
                       autoPlay={autoPlayNext}
-                      onProgress={handleProgress}
+                      onProgress={handlePlayTimeTrack}
                       onEnded={handleNext}
                     />
                   ) : (
