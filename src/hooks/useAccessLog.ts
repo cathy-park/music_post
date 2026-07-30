@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase, isSupabaseReady } from '../lib/supabase';
 import { parseUserAgent } from '../lib/userAgent';
 
-export function useAccessLog(listenedSongs: string[] = []) {
+export function useAccessLog(listenedSongs: string[] = [], token?: string) {
   const sessionId = useRef(crypto.randomUUID());
   const startTime = useRef(Date.now());
   const hasInserted = useRef(false);
@@ -51,6 +51,7 @@ export function useAccessLog(listenedSongs: string[] = []) {
         id: sid,
         device_info: finalDeviceInfo,
         duration_sec: 0,
+        share_token: token || null,
       }).then(({ error }) => {
         if (error) console.error('Failed to insert access log:', error);
       });

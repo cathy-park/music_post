@@ -208,6 +208,46 @@ export async function saveEntry(entry: DiaryEntry, audioFile?: File): Promise<Di
   return mapEntry(data);
 }
 
+export async function copyBookEntries(sourceBook: DiaryBook, newTitle: string): Promise<DiaryBook> {
+  if (!isSupabaseReady || !supabase) {
+    throw new Error('서버 연동 모드에서만 카테고리를 복사할 수 있습니다.');
+  }
+
+  // 1. 새 book 생성
+  const newBook = await createBook(newTitle);
+
+  // 2. 원본 카테고리의 엔트리 가져오기
+  const { data: entryRows, error: entryError } = await supabase
+    .from('diary_entries')
+    .select('*')
+    .eq('book_id', sourceBook.id)
+    .order('sort_order', { ascending: true });
+
+  if (entryError) throw entryError;
+  if (!entryRows || entryRows.length === 0) return newBook;
+
+  // 3. 엔트리 복사 (새 id, 새 book_id로)
+  const newEntries = entryRows.map((row: Record<string, unknown>) => ({
+    book_id: newBook.id,
+    title: row.title,
+    subtitle: row.subtitle,
+    date_label: row.date_label,
+    comment: row.comment,
+    lyrics: row.lyrics,
+    prompt: row.prompt || null,
+    audio_url: row.audio_url,
+    cover_tone: row.cover_tone,
+    sort_order: row.sort_order,
+    published: row.published,
+    icon: row.icon ?? '🎵',
+  }));
+
+  const { error: insertError } = await supabase.from('diary_entries').insert(newEntries);
+  if (insertError) throw insertError;
+
+  return newBook;
+}
+
 export async function deleteEntry(id: string): Promise<void> {
   if (!isSupabaseReady || !supabase) {
     saveLocalEntries(loadLocalEntries().filter((entry) => entry.id !== id));

@@ -1,10 +1,9 @@
-import { Check, Copy, Lock, LogIn, Music, Plus, Radio, Save, Settings, Trash2, UploadCloud } from 'lucide-react';
-import { FormEvent, useEffect, useRef, useMemo, useState, useCallback } from 'react';
+import { Check, Copy, Lock, Music, Plus, Radio, Settings, Trash2, UploadCloud, Activity, Layers } from 'lucide-react';
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { resolveAudioUrl } from '../lib/idb';
 import { isSupabaseReady, supabase } from '../lib/supabase';
-import { deleteEntry, getAdminData, saveBook, saveEntry, createBook, deleteBook } from '../lib/repository';
+import { deleteEntry, getAdminData, saveBook, saveEntry, createBook, deleteBook, copyBookEntries } from '../lib/repository';
 import AccessLogViewer from '../components/AccessLogViewer';
-import { Activity } from 'lucide-react';
 import type { DiaryBook, DiaryEntry } from '../types';
 
 /** 기준일: 2026-05-30 = DAY 1 */
@@ -285,7 +284,10 @@ export default function AdminPage() {
 
 
   const activeBook = books.find(b => b.id === activeBookId);
-  const activeEntries = activeBookId === '' ? entries : entries.filter(e => e.bookId === activeBookId);
+  const activeEntries = useMemo(() => {
+    const filtered = activeBookId === '' ? entries : entries.filter(e => e.bookId === activeBookId);
+    return [...filtered].sort((a, b) => a.order - b.order);
+  }, [entries, activeBookId]);
 
   // 브라우저 탭(문서) 제목 동적 설정
   useEffect(() => {
@@ -369,6 +371,24 @@ export default function AdminPage() {
                   setMessage('이 카테고리의 뷰어 링크를 복사했어요.');
                 }}
               ><Copy size={16} /> 링크 복사</button>
+              <button
+                className="ghost-button"
+                title="이 카테고리의 모든 곡을 새 카테고리로 복사합니다"
+                onClick={async () => {
+                  if (!activeBook) return;
+                  const newTitle = window.prompt(`'${activeBook.title}' 카테고리를 복사합니다.\n새 카테고리 이름을 입력해주세요:`, `${activeBook.title} (복사본)`);
+                  if (!newTitle) return;
+                  try {
+                    const newBook = await copyBookEntries(activeBook, newTitle);
+                    setBooks(prev => [...prev, newBook]);
+                    setActiveBookId(newBook.id);
+                    await load();
+                    setMessage(`'${newTitle}' 카테고리로 복사했어요.`);
+                  } catch (err) {
+                    setMessage((err as Error).message);
+                  }
+                }}
+              ><Layers size={16} /> 카테고리 복사</button>
               <a className="ghost-button" href={`/v/${activeBook.shareToken}`} target="_blank" rel="noreferrer">뷰어 열기</a>
             </>
           )}

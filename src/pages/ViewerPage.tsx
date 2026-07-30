@@ -164,15 +164,15 @@ function SyncedLyrics({
 
 // ── ViewerPage ───────────────────────────────────────
 export default function ViewerPage() {
+  const { token = sampleBook.shareToken } = useParams();
   const [songCounts, setSongCounts] = useState<Record<string, number>>({});
   
   const formattedSongs = useMemo(() => {
     return Object.entries(songCounts).map(([title, count]) => `${title}(${count})`);
   }, [songCounts]);
 
-  useAccessLog(formattedSongs); // 방문자 접속 및 체류 시간 기록
+  useAccessLog(formattedSongs, token); // 방문자 접속 및 체류 시간 기록
 
-  const { token = sampleBook.shareToken } = useParams();
   const [book, setBook] = useState<DiaryBook | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [activeId, setActiveId] = useState('');

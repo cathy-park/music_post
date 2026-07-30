@@ -32,4 +32,6 @@ export type AccessLog = {
   device_info: string;
   duration_sec: number;
   listened_songs?: string;
+  share_token?: string;
 };
+
