@@ -30,7 +30,6 @@ export type AccessLog = {
   id: string;
   created_at: string;
   device_info: string;
-  location?: string;
   duration_sec: number;
   listened_songs?: string;
   share_token?: string;

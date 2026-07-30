@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { AccessLog } from '../types';
-import { X, Clock, Smartphone, Music, Trash2, RefreshCw, MapPin } from 'lucide-react';
+import { X, Clock, Smartphone, Music, Trash2, RefreshCw } from 'lucide-react';
 
 interface BookInfo {
   id: string;
@@ -9,12 +9,8 @@ interface BookInfo {
   shareToken: string;
 }
 
-interface AccessLogExt extends AccessLog {
-  location?: string;
-}
-
 export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
-  const [logs, setLogs] = useState<AccessLogExt[]>([]);
+  const [logs, setLogs] = useState<AccessLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [books, setBooks] = useState<BookInfo[]>([]);
   const [activeToken, setActiveToken] = useState<string>('__all__');
@@ -88,18 +84,11 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
     return `${m}분 ${s}초`;
   };
 
-  /** device_info에서 [위치] 부분 분리 (기존 데이터 호환) */
-  const parseDeviceAndLocation = (log: AccessLogExt) => {
-    // 새로운 location 컬럼이 있으면 그대로 사용
-    if (log.location) {
-      return { device: log.device_info, location: log.location };
-    }
-    // 기존 데이터 호환: device_info에서 [위치] 분리
-    const match = log.device_info?.match(/^(.+?)\s*\[(.+)\]$/);
-    if (match) {
-      return { device: match[1].trim(), location: match[2] };
-    }
-    return { device: log.device_info, location: '' };
+  /** device_info에서 [위치] 부분 제거 (기존 데이터 호환) */
+  const cleanDeviceInfo = (deviceInfo: string) => {
+    // 기존 데이터에 [위치]가 포함된 경우 제거
+    const match = deviceInfo?.match(/^(.+?)\s*\[.+\]$/);
+    return match ? match[1].trim() : deviceInfo;
   };
 
   // 집계 통계
@@ -186,10 +175,7 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                   <th style={{ padding: '10px 8px', color: '#666' }}>
                     <Smartphone size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />기기
                   </th>
-                  <th style={{ padding: '10px 8px', color: '#666' }}>
-                    <MapPin size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />위치
-                  </th>
-                  <th style={{ padding: '10px 8px', color: '#666', width: '28%' }}>
+                  <th style={{ padding: '10px 8px', color: '#666', width: '30%' }}>
                     <Music size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />들은 노래
                   </th>
                   <th style={{ padding: '10px 8px', color: '#666' }}>
@@ -198,19 +184,14 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                 </tr>
               </thead>
               <tbody>
-                {logs.map((log) => {
-                  const { device, location } = parseDeviceAndLocation(log);
-                  return (
+                {logs.map((log) => (
                     <tr key={log.id} style={{ borderBottom: '1px solid #f0f0f0', verticalAlign: 'top' }}>
                       <td style={{ padding: '10px 8px', color: '#333', whiteSpace: 'nowrap' }}>
                         {new Date(log.created_at).toLocaleString('ko-KR', {
                           month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
                       </td>
-                      <td style={{ padding: '10px 8px', color: '#555', whiteSpace: 'nowrap' }}>{device}</td>
-                      <td style={{ padding: '10px 8px', color: '#888', fontSize: 12, whiteSpace: 'nowrap' }}>
-                        {location || '-'}
-                      </td>
+                      <td style={{ padding: '10px 8px', color: '#555', whiteSpace: 'nowrap' }}>{cleanDeviceInfo(log.device_info)}</td>
                       <td style={{ padding: '10px 8px', color: '#888', fontSize: 12 }}>
                         {log.listened_songs ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -235,8 +216,7 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                       </td>
                       <td style={{ padding: '10px 8px', color: '#d75a68', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatDuration(log.duration_sec)}</td>
                     </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>

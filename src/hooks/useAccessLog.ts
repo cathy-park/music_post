@@ -44,28 +44,11 @@ export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token
       if (hasInserted.current) return;
       hasInserted.current = true;
       
-      let baseDevice = parseUserAgent(navigator.userAgent);
-      let locationStr = '';
-      
-      try {
-        // IP API를 이용해 대략적인 위치 파악
-        const res = await fetch('https://ipapi.co/json/');
-        if (res.ok) {
-          const data = await res.json();
-          const region = data.region ? `${data.region} ` : '';
-          const city = data.city ? `${data.city}` : '';
-          if (region || city) {
-            locationStr = `${region}${city}`.trim();
-          }
-        }
-      } catch (err) {
-        console.warn('위치 정보 가져오기 실패:', err);
-      }
+      const deviceInfo = parseUserAgent(navigator.userAgent);
 
       supabase?.from('access_logs').insert({
         id: sid,
-        device_info: baseDevice,
-        location: locationStr || null,
+        device_info: deviceInfo,
         duration_sec: 0,
         share_token: token || null,
       }).then(({ error }) => {
