@@ -385,9 +385,13 @@ export default function ViewerPage() {
                       ref={playerRef}
                       src={activeEntry.audioUrl}
                       title={activeEntry.title}
+                      subtitle={activeEntry.subtitle}
+                      albumTitle={book?.title}
                       autoPlay={autoPlayNext}
                       onProgress={handlePlayTimeTrack}
                       onEnded={handleNext}
+                      onPrev={prevEntry ? handlePrev : null}
+                      onNext={nextEntry ? handleNext : null}
                     />
                   ) : (
                     <EmptyAudio />

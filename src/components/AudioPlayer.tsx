@@ -16,12 +16,16 @@ export type AudioPlayerRef = {
 type Props = {
   src: string;
   title: string;
+  subtitle?: string;
+  albumTitle?: string;
   autoPlay?: boolean;
   onProgress?: (current: number, duration: number) => void;
   onEnded?: () => void;
+  onPrev?: (() => void) | null;
+  onNext?: (() => void) | null;
 };
 
-const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, autoPlay, onProgress, onEnded }, ref) => {
+const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onEnded, onPrev, onNext }, ref) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -55,6 +59,82 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, autoPlay, o
       audioRef.current.load();
     }
   }, [resolvedSrc]);
+
+  // ── Media Session API: 블루투스/잠금화면 미디어 컨트롤 ──
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title,
+      artist: subtitle || '',
+      album: albumTitle || '',
+    });
+  }, [title, subtitle, albumTitle]);
+
+  // 재생 상태에 따른 Media Session playback state 업데이트
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+  }, [playing]);
+
+  // Media Session 액션 핸들러 (이전/다음/재생/일시정지)
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+
+    const handlePlay = async () => {
+      if (audioRef.current && resolvedSrc) {
+        await audioRef.current.play();
+      }
+    };
+    const handlePause = () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+    const handleSeekBackward = () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+      }
+    };
+    const handleSeekForward = () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.min(
+          audioRef.current.duration || 0,
+          audioRef.current.currentTime + 10
+        );
+      }
+    };
+
+    navigator.mediaSession.setActionHandler('play', handlePlay);
+    navigator.mediaSession.setActionHandler('pause', handlePause);
+    navigator.mediaSession.setActionHandler('seekbackward', handleSeekBackward);
+    navigator.mediaSession.setActionHandler('seekforward', handleSeekForward);
+    navigator.mediaSession.setActionHandler('previoustrack', onPrev || null);
+    navigator.mediaSession.setActionHandler('nexttrack', onNext || null);
+
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('seekbackward', null);
+      navigator.mediaSession.setActionHandler('seekforward', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
+    };
+  }, [resolvedSrc, onPrev, onNext]);
+
+  // Media Session position state 업데이트
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !duration || !playing) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: duration,
+        playbackRate: 1,
+        position: Math.min(current, duration),
+      });
+    } catch {
+      // 일부 브라우저에서 지원하지 않을 수 있음
+    }
+  }, [current, duration, playing]);
 
   const toggle = async () => {
     if (!resolvedSrc || !audioRef.current) return;
