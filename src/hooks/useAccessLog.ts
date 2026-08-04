@@ -2,15 +2,61 @@ import { useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseReady } from '../lib/supabase';
 import { parseUserAgent } from '../lib/userAgent';
 
-/** 곡별 재생 통계: 누적 재생 초 + 재생(시작) 횟수 + 완청(끝까지 재생) 횟수 */
-export type SongPlayStats = { seconds: number; count: number; completed: number };
+/** 재생 위치를 나눠서 세는 구간 크기(초). 특정 구간만 반복재생했는지 감지하는 데 쓴다. */
+export const BUCKET_SEC = 10;
 
-/** 각 곡의 실제 재생 통계를 추적하는 Map: title → { seconds, count, completed } */
+/** 곡별 재생 통계: 누적 재생 초 + 재생(시작) 횟수 + 완청(끝까지 재생) 횟수 + 구간별 통과 횟수 */
+export type SongPlayStats = {
+  seconds: number;
+  count: number;
+  completed: number;
+  /** 구간 인덱스(0, 1, 2...) → 그 구간을 지나간 횟수. 반복재생 구간 탐지용 */
+  buckets: Map<number, number>;
+};
+
+/** 각 곡의 실제 재생 통계를 추적하는 Map: title → SongPlayStats */
 export type SongPlayMap = Map<string, SongPlayStats>;
+
+export function emptySongPlayStats(): SongPlayStats {
+  return { seconds: 0, count: 0, completed: 0, buckets: new Map() };
+}
+
+function formatMMSS(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+/**
+ * 구간별 통과 횟수에서 "가장 많이 반복된 구간"을 찾아 "1:20-1:40(3회)" 형식으로 요약한다.
+ * 모든 구간이 1회씩만 지나갔으면(반복 없음) null을 반환한다.
+ */
+function summarizeRepeatRange(buckets: Map<number, number>): string | null {
+  if (buckets.size === 0) return null;
+  const maxCount = Math.max(...buckets.values());
+  if (maxCount < 2) return null; // 반복된 구간이 없음
+
+  // 최댓값을 가진 구간들을 인접한 것끼리 묶는다.
+  const hot = [...buckets.entries()].filter(([, c]) => c === maxCount).map(([b]) => b).sort((a, b) => a - b);
+  const ranges: number[][] = [];
+  let cur: number[] = [hot[0]];
+  for (let i = 1; i < hot.length; i++) {
+    if (hot[i] === cur[cur.length - 1] + 1) cur.push(hot[i]);
+    else { ranges.push(cur); cur = [hot[i]]; }
+  }
+  ranges.push(cur);
+
+  // 가장 긴(넓은) 구간 하나만 대표로 보여준다.
+  ranges.sort((a, b) => b.length - a.length);
+  const top = ranges[0];
+  const startSec = top[0] * BUCKET_SEC;
+  const endSec = (top[top.length - 1] + 1) * BUCKET_SEC;
+  return `${formatMMSS(startSec)}-${formatMMSS(endSec)}(${maxCount}회)`;
+}
 
 /**
  * 재생 통계 맵을 DB 저장용 문자열로 변환
- * 형식: "곡제목 - 1분 23초 · 3회 재생 · 완청 1회\n곡제목2 - 45초 · 1회 재생 · 미완청" (줄바꿈 구분)
+ * 형식: "곡제목 - 1분 23초 · 3회 재생 · 완청 1회 · 반복구간 1:20-1:40(3회)" (줄바꿈 구분)
  */
 function formatSongPlayMap(map: SongPlayMap): string | null {
   if (map.size === 0) return null;
@@ -25,7 +71,9 @@ function formatSongPlayMap(map: SongPlayMap): string | null {
       : `${Math.floor(sec / 60)}분 ${Math.floor(sec % 60)}초`;
     const countStr = count > 0 ? ` · ${count}회 재생` : '';
     const completedStr = count > 0 ? ` · ${completed > 0 ? `완청 ${completed}회` : '미완청'}` : '';
-    lines.push(`${title} - ${timeStr}${countStr}${completedStr}`);
+    const repeatRange = summarizeRepeatRange(stats.buckets);
+    const repeatStr = repeatRange ? ` · 반복구간 ${repeatRange}` : '';
+    lines.push(`${title} - ${timeStr}${countStr}${completedStr}${repeatStr}`);
   }
   return lines.length > 0 ? lines.join('\n') : null;
 }

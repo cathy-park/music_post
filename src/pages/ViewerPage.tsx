@@ -7,7 +7,7 @@ import InstallPrompt from '../components/InstallPrompt';
 import { sampleBook } from '../data';
 import { getViewerData } from '../lib/repository';
 import { downloadStrippedAudio } from '../lib/download';
-import { useAccessLog, type SongPlayMap } from '../hooks/useAccessLog';
+import { useAccessLog, emptySongPlayStats, BUCKET_SEC, type SongPlayMap } from '../hooks/useAccessLog';
 import type { DiaryBook, DiaryEntry } from '../types';
 import AudioPlayer, { type AudioPlayerRef } from '../components/AudioPlayer';
 
@@ -169,6 +169,8 @@ export default function ViewerPage() {
   // 곡별 실제 재생 시간(초) 추적 Map
   const songPlayMapRef = useRef<SongPlayMap>(new Map());
   const lastTimeRef = useRef<{ title: string; time: number } | null>(null);
+  // 곡별로 마지막에 지나간 구간 인덱스 (반복 구간 탐지용 — 같은 구간에 머무는 동안 중복 집계 방지)
+  const lastBucketRef = useRef<{ title: string; bucket: number } | null>(null);
 
   // 방문자 접속 및 체류 시간 기록 (화면이 안 보여도 음악이 재생 중이면 계속 "체류"로 집계됨)
   const { notifyPlaying } = useAccessLog(songPlayMapRef, token);
@@ -227,26 +229,39 @@ export default function ViewerPage() {
   // 실제 재생 시간 추적: onTimeUpdate 콜백에서 곡별 누적 재생 시간 기록
   const handlePlayTimeTrack = useCallback((current: number, duration: number) => {
     setAudioProgress({ current, duration });
-    
+
     if (!activeEntry?.title) return;
+    const map = songPlayMapRef.current;
+
     const last = lastTimeRef.current;
     if (last && last.title === activeEntry.title) {
       const delta = current - last.time;
       // 정상적인 재생 진행일 때만 누적 (0~2초 범위, seek 제외)
       if (delta > 0 && delta < 2) {
-        const map = songPlayMapRef.current;
-        const prev = map.get(activeEntry.title) || { seconds: 0, count: 0, completed: 0 };
+        const prev = map.get(activeEntry.title) || emptySongPlayStats();
         map.set(activeEntry.title, { ...prev, seconds: prev.seconds + delta });
       }
     }
     lastTimeRef.current = { title: activeEntry.title, time: current };
+
+    // 반복 구간 추적: 재생 위치가 새로운 구간으로 넘어갈 때마다 그 구간의 통과 횟수를 올린다.
+    // 특정 구간을 되감아 다시 들으면 그 구간만 통과 횟수가 유독 높아진다.
+    const bucket = Math.floor(current / BUCKET_SEC);
+    const lastBucket = lastBucketRef.current;
+    if (!lastBucket || lastBucket.title !== activeEntry.title || lastBucket.bucket !== bucket) {
+      const prev = map.get(activeEntry.title) || emptySongPlayStats();
+      const buckets = new Map(prev.buckets);
+      buckets.set(bucket, (buckets.get(bucket) || 0) + 1);
+      map.set(activeEntry.title, { ...prev, buckets });
+      lastBucketRef.current = { title: activeEntry.title, bucket };
+    }
   }, [activeEntry?.title]);
 
   // 재생 횟수 추적: 재생 버튼을 누르거나(재개 포함) 오디오가 재생을 시작할 때마다 카운트
   const handlePlayStart = useCallback(() => {
     if (!activeEntry?.title) return;
     const map = songPlayMapRef.current;
-    const prev = map.get(activeEntry.title) || { seconds: 0, count: 0, completed: 0 };
+    const prev = map.get(activeEntry.title) || emptySongPlayStats();
     map.set(activeEntry.title, { ...prev, count: prev.count + 1 });
   }, [activeEntry?.title]);
 
@@ -254,7 +269,7 @@ export default function ViewerPage() {
   const handleCompleted = useCallback(() => {
     if (!activeEntry?.title) return;
     const map = songPlayMapRef.current;
-    const prev = map.get(activeEntry.title) || { seconds: 0, count: 0, completed: 0 };
+    const prev = map.get(activeEntry.title) || emptySongPlayStats();
     map.set(activeEntry.title, { ...prev, completed: prev.completed + 1 });
   }, [activeEntry?.title]);
 

@@ -196,36 +196,47 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                         {log.listened_songs ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {log.listened_songs.split('\n').map((line, i) => {
-                              // "곡제목 - 1분 23초 · 3회 재생 · 완청 1회" 형식 파싱
+                              // "곡제목 - 1분 23초 · 3회 재생 · 완청 1회 · 반복구간 1:20-1:40(3회)" 형식 파싱
                               const dashIdx = line.lastIndexOf(' - ');
                               if (dashIdx > 0) {
                                 const title = line.substring(0, dashIdx);
                                 const rest = line.substring(dashIdx + 3);
-                                // 마지막 " · 완청 N회" / " · 미완청" 조각만 따로 떼어 배지로 표시
+                                // 뒤에서부터 "완청/미완청"·"반복구간" 태그를 떼어내고, 남는 부분이 순수 시간/횟수
                                 const parts = rest.split(' · ');
-                                const last = parts[parts.length - 1];
-                                const isCompletionTag = last === '미완청' || /^완청 \d+회$/.test(last);
-                                const time = isCompletionTag ? parts.slice(0, -1).join(' · ') : rest;
-                                const completionTag = isCompletionTag ? last : null;
+                                const tags: string[] = [];
+                                while (parts.length > 0) {
+                                  const p = parts[parts.length - 1];
+                                  const isCompletionTag = p === '미완청' || /^완청 \d+회$/.test(p);
+                                  const isRepeatTag = /^반복구간 /.test(p);
+                                  if (!isCompletionTag && !isRepeatTag) break;
+                                  tags.unshift(p);
+                                  parts.pop();
+                                }
+                                const time = parts.join(' · ');
                                 return (
                                   <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
                                     <span style={{ color: '#555', fontWeight: 500 }}>♪ {title}</span>
                                     <span style={{ color: '#d75a68', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{time}</span>
-                                    {completionTag && (
-                                      <span
-                                        style={{
-                                          fontSize: 10,
-                                          fontWeight: 700,
-                                          whiteSpace: 'nowrap',
-                                          padding: '1px 6px',
-                                          borderRadius: 8,
-                                          color: completionTag === '미완청' ? '#8a8a8a' : '#2f9e5c',
-                                          background: completionTag === '미완청' ? '#f0f0f0' : '#e6f7ee',
-                                        }}
-                                      >
-                                        {completionTag}
-                                      </span>
-                                    )}
+                                    {tags.map((tag, ti) => {
+                                      const isRepeatTag = tag.startsWith('반복구간 ');
+                                      const isNotCompleted = tag === '미완청';
+                                      return (
+                                        <span
+                                          key={ti}
+                                          style={{
+                                            fontSize: 10,
+                                            fontWeight: 700,
+                                            whiteSpace: 'nowrap',
+                                            padding: '1px 6px',
+                                            borderRadius: 8,
+                                            color: isRepeatTag ? '#6b5ce7' : isNotCompleted ? '#8a8a8a' : '#2f9e5c',
+                                            background: isRepeatTag ? '#f1eeff' : isNotCompleted ? '#f0f0f0' : '#e6f7ee',
+                                          }}
+                                        >
+                                          {tag}
+                                        </span>
+                                      );
+                                    })}
                                   </div>
                                 );
                               }
