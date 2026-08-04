@@ -2,25 +2,28 @@ import { useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseReady } from '../lib/supabase';
 import { parseUserAgent } from '../lib/userAgent';
 
-/** 각 곡의 실제 재생 시간(초)을 추적하는 Map: title → 누적 재생 초 */
-export type SongPlayMap = Map<string, number>;
+/** 곡별 재생 통계: 누적 재생 초 + 재생(시작) 횟수 */
+export type SongPlayStats = { seconds: number; count: number };
+
+/** 각 곡의 실제 재생 통계를 추적하는 Map: title → { seconds, count } */
+export type SongPlayMap = Map<string, SongPlayStats>;
 
 /**
- * 재생 시간 맵을 DB 저장용 문자열로 변환
- * 형식: "곡제목 - 1분 23초\n곡제목2 - 45초" (줄바꿈 구분)
+ * 재생 통계 맵을 DB 저장용 문자열로 변환
+ * 형식: "곡제목 - 1분 23초 · 3회\n곡제목2 - 45초 · 1회" (줄바꿈 구분)
  */
 function formatSongPlayMap(map: SongPlayMap): string | null {
   if (map.size === 0) return null;
   const lines: string[] = [];
-  for (const [title, sec] of map) {
-    if (sec < 1) continue; // 1초 미만은 무시
-    if (sec < 60) {
-      lines.push(`${title} - ${Math.floor(sec)}초`);
-    } else {
-      const m = Math.floor(sec / 60);
-      const s = Math.floor(sec % 60);
-      lines.push(`${title} - ${m}분 ${s}초`);
-    }
+  for (const [title, stats] of map) {
+    const sec = stats.seconds;
+    const count = stats.count;
+    if (sec < 1 && count < 1) continue; // 재생 시간도 없고 재생 횟수도 없으면 무시
+    const timeStr = sec < 60
+      ? `${Math.floor(sec)}초`
+      : `${Math.floor(sec / 60)}분 ${Math.floor(sec % 60)}초`;
+    const countStr = count > 0 ? ` · ${count}회` : '';
+    lines.push(`${title} - ${timeStr}${countStr}`);
   }
   return lines.length > 0 ? lines.join('\n') : null;
 }

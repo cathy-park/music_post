@@ -234,10 +234,19 @@ export default function ViewerPage() {
       // 정상적인 재생 진행일 때만 누적 (0~2초 범위, seek 제외)
       if (delta > 0 && delta < 2) {
         const map = songPlayMapRef.current;
-        map.set(activeEntry.title, (map.get(activeEntry.title) || 0) + delta);
+        const prev = map.get(activeEntry.title) || { seconds: 0, count: 0 };
+        map.set(activeEntry.title, { ...prev, seconds: prev.seconds + delta });
       }
     }
     lastTimeRef.current = { title: activeEntry.title, time: current };
+  }, [activeEntry?.title]);
+
+  // 재생 횟수 추적: 재생 버튼을 누르거나(재개 포함) 오디오가 재생을 시작할 때마다 카운트
+  const handlePlayStart = useCallback(() => {
+    if (!activeEntry?.title) return;
+    const map = songPlayMapRef.current;
+    const prev = map.get(activeEntry.title) || { seconds: 0, count: 0 };
+    map.set(activeEntry.title, { ...prev, count: prev.count + 1 });
   }, [activeEntry?.title]);
 
   // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정 + PWA manifest 동적 주입
@@ -389,6 +398,7 @@ export default function ViewerPage() {
                       albumTitle={book?.title}
                       autoPlay={autoPlayNext}
                       onProgress={handlePlayTimeTrack}
+                      onPlayStart={handlePlayStart}
                       onEnded={handleNext}
                       onPrev={prevEntry ? handlePrev : null}
                       onNext={nextEntry ? handleNext : null}

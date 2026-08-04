@@ -20,12 +20,13 @@ type Props = {
   albumTitle?: string;
   autoPlay?: boolean;
   onProgress?: (current: number, duration: number) => void;
+  onPlayStart?: () => void;
   onEnded?: () => void;
   onPrev?: (() => void) | null;
   onNext?: (() => void) | null;
 };
 
-const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onEnded, onPrev, onNext }, ref) => {
+const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onPlayStart, onEnded, onPrev, onNext }, ref) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -148,7 +149,7 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, a
         ref={audioRef}
         src={resolvedSrc || undefined}
         autoPlay={autoPlay}
-        onPlay={() => setPlaying(true)}
+        onPlay={() => { setPlaying(true); onPlayStart?.(); }}
         onPause={() => setPlaying(false)}
         onEnded={() => {
           setPlaying(false);
