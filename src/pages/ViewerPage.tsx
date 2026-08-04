@@ -168,9 +168,11 @@ export default function ViewerPage() {
   
   // 곡별 실제 재생 시간(초) 추적 Map
   const songPlayMapRef = useRef<SongPlayMap>(new Map());
-  const lastTimeRef = useRef<{ title: string; time: number } | null>(null);
-  // 곡별로 마지막에 지나간 구간 인덱스 (반복 구간 탐지용 — 같은 구간에 머무는 동안 중복 집계 방지)
-  const lastBucketRef = useRef<{ title: string; bucket: number } | null>(null);
+  // 곡(title)별로 완전히 독립적으로 "마지막 위치/구간"을 기억한다.
+  // (예전엔 "마지막으로 재생 중이던 곡" 하나만 기억해서 곡 전환 시점의 타이밍에 따라
+  //  값이 어긋날 여지가 있었다 — 곡별 Map으로 바꿔 그 경계 문제 자체를 없앤다.)
+  const lastTimeByTitleRef = useRef<Map<string, number>>(new Map());
+  const lastBucketByTitleRef = useRef<Map<string, number>>(new Map());
 
   // 방문자 접속 및 체류 시간 기록 (화면이 안 보여도 음악이 재생 중이면 계속 "체류"로 집계됨)
   const { notifyPlaying } = useAccessLog(songPlayMapRef, token);
@@ -231,29 +233,31 @@ export default function ViewerPage() {
     setAudioProgress({ current, duration });
 
     if (!activeEntry?.title) return;
+    const title = activeEntry.title;
     const map = songPlayMapRef.current;
 
-    const last = lastTimeRef.current;
-    if (last && last.title === activeEntry.title) {
-      const delta = current - last.time;
+    const lastTime = lastTimeByTitleRef.current.get(title);
+    if (lastTime !== undefined) {
+      const delta = current - lastTime;
       // 정상적인 재생 진행일 때만 누적 (0~2초 범위, seek 제외)
       if (delta > 0 && delta < 2) {
-        const prev = map.get(activeEntry.title) || emptySongPlayStats();
-        map.set(activeEntry.title, { ...prev, seconds: prev.seconds + delta });
+        const prev = map.get(title) || emptySongPlayStats();
+        map.set(title, { ...prev, seconds: prev.seconds + delta });
       }
     }
-    lastTimeRef.current = { title: activeEntry.title, time: current };
+    lastTimeByTitleRef.current.set(title, current);
 
     // 반복 구간 추적: 재생 위치가 새로운 구간으로 넘어갈 때마다 그 구간의 통과 횟수를 올린다.
-    // 특정 구간을 되감아 다시 들으면 그 구간만 통과 횟수가 유독 높아진다.
+    // 특정 구간을 되감거나, 곡을 떠났다가 다시 돌아와서 같은 구간을 또 지나가면 통과 횟수가 올라간다.
+    // 곡별로 독립된 Map에 마지막 구간을 저장해서, 다른 곡을 듣고 온 뒤에도 항상 정확히 비교된다.
     const bucket = Math.floor(current / BUCKET_SEC);
-    const lastBucket = lastBucketRef.current;
-    if (!lastBucket || lastBucket.title !== activeEntry.title || lastBucket.bucket !== bucket) {
-      const prev = map.get(activeEntry.title) || emptySongPlayStats();
+    const lastBucket = lastBucketByTitleRef.current.get(title);
+    if (lastBucket === undefined || lastBucket !== bucket) {
+      const prev = map.get(title) || emptySongPlayStats();
       const buckets = new Map(prev.buckets);
       buckets.set(bucket, (buckets.get(bucket) || 0) + 1);
-      map.set(activeEntry.title, { ...prev, buckets });
-      lastBucketRef.current = { title: activeEntry.title, bucket };
+      map.set(title, { ...prev, buckets });
+      lastBucketByTitleRef.current.set(title, bucket);
     }
   }, [activeEntry?.title]);
 
@@ -293,7 +297,6 @@ export default function ViewerPage() {
   // 곡이 바뀌면 진행도 초기화
   useEffect(() => {
     setAudioProgress({ current: 0, duration: 0 });
-    lastTimeRef.current = null; // 곡 변경 시 추적 리셋
   }, [activeId]);
 
   const currentIndex = entries.findIndex(e => e.id === activeId);
