@@ -27,8 +27,12 @@ function formatSongPlayMap(map: SongPlayMap): string | null {
 
 export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token?: string) {
   const sessionId = useRef(crypto.randomUUID());
-  const startTime = useRef(Date.now());
   const hasInserted = useRef(false);
+  // 탭이 화면에 보이는(포그라운드) 시간만 누적한다 — 백그라운드로 가 있는 동안은 세지 않는다.
+  const accumulatedSec = useRef(0);
+  const activeStart = useRef<number | null>(
+    typeof document !== 'undefined' && document.visibilityState === 'visible' ? Date.now() : null
+  );
 
   useEffect(() => {
     if (!isSupabaseReady || !supabase) return;
@@ -58,14 +62,20 @@ export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token
 
     initLog();
 
+    // 현재까지의 포그라운드 체류 시간(초) 계산
+    const currentDurationSec = () => {
+      const activeExtra = activeStart.current !== null ? (Date.now() - activeStart.current) / 1000 : 0;
+      return Math.floor(accumulatedSec.current + activeExtra);
+    };
+
     // 체류 시간 및 들은 노래 업데이트 함수
     const updateDuration = () => {
-      const durationSec = Math.floor((Date.now() - startTime.current) / 1000);
+      const durationSec = currentDurationSec();
       const currentMap = songPlayMapRef.current;
       const songsStr = currentMap ? formatSongPlayMap(currentMap) : null;
-      
+
       supabase?.from('access_logs')
-        .update({ 
+        .update({
           duration_sec: durationSec,
           listened_songs: songsStr
         })
@@ -78,7 +88,15 @@ export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
+        // 백그라운드로 전환되는 시점까지의 포그라운드 시간을 누적하고 카운트를 멈춘다
+        if (activeStart.current !== null) {
+          accumulatedSec.current += (Date.now() - activeStart.current) / 1000;
+          activeStart.current = null;
+        }
         updateDuration();
+      } else {
+        // 다시 포그라운드로 돌아오면 카운트를 재개한다
+        activeStart.current = Date.now();
       }
     };
 
