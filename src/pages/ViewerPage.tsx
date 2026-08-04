@@ -7,7 +7,7 @@ import InstallPrompt from '../components/InstallPrompt';
 import { sampleBook } from '../data';
 import { getViewerData } from '../lib/repository';
 import { downloadStrippedAudio } from '../lib/download';
-import { useAccessLog, emptySongPlayStats, BUCKET_SEC, type SongPlayMap } from '../hooks/useAccessLog';
+import { useAccessLog, initialSongPlayStats, persistBucketVisit, BUCKET_SEC, type SongPlayMap } from '../hooks/useAccessLog';
 import type { DiaryBook, DiaryEntry } from '../types';
 import AudioPlayer, { type AudioPlayerRef } from '../components/AudioPlayer';
 
@@ -241,7 +241,7 @@ export default function ViewerPage() {
       const delta = current - lastTime;
       // 정상적인 재생 진행일 때만 누적 (0~2초 범위, seek 제외)
       if (delta > 0 && delta < 2) {
-        const prev = map.get(title) || emptySongPlayStats();
+        const prev = map.get(title) || initialSongPlayStats(title);
         map.set(title, { ...prev, seconds: prev.seconds + delta });
       }
     }
@@ -250,14 +250,18 @@ export default function ViewerPage() {
     // 반복 구간 추적: 재생 위치가 새로운 구간으로 넘어갈 때마다 그 구간의 통과 횟수를 올린다.
     // 특정 구간을 되감거나, 곡을 떠났다가 다시 돌아와서 같은 구간을 또 지나가면 통과 횟수가 올라간다.
     // 곡별로 독립된 Map에 마지막 구간을 저장해서, 다른 곡을 듣고 온 뒤에도 항상 정확히 비교된다.
+    // 구간 통과 횟수는 기기 로컬(localStorage)에도 저장되어, 방문(세션)이 바뀌어도
+    // "이 부분은 예전에 이미 들었다"를 계속 기억한다.
     const bucket = Math.floor(current / BUCKET_SEC);
     const lastBucket = lastBucketByTitleRef.current.get(title);
     if (lastBucket === undefined || lastBucket !== bucket) {
-      const prev = map.get(title) || emptySongPlayStats();
+      const prev = map.get(title) || initialSongPlayStats(title);
       const buckets = new Map(prev.buckets);
-      buckets.set(bucket, (buckets.get(bucket) || 0) + 1);
+      const newCount = (buckets.get(bucket) || 0) + 1;
+      buckets.set(bucket, newCount);
       map.set(title, { ...prev, buckets });
       lastBucketByTitleRef.current.set(title, bucket);
+      persistBucketVisit(title, bucket, newCount);
     }
   }, [activeEntry?.title]);
 
@@ -265,7 +269,7 @@ export default function ViewerPage() {
   const handlePlayStart = useCallback(() => {
     if (!activeEntry?.title) return;
     const map = songPlayMapRef.current;
-    const prev = map.get(activeEntry.title) || emptySongPlayStats();
+    const prev = map.get(activeEntry.title) || initialSongPlayStats(activeEntry.title);
     map.set(activeEntry.title, { ...prev, count: prev.count + 1 });
   }, [activeEntry?.title]);
 
@@ -273,7 +277,7 @@ export default function ViewerPage() {
   const handleCompleted = useCallback(() => {
     if (!activeEntry?.title) return;
     const map = songPlayMapRef.current;
-    const prev = map.get(activeEntry.title) || emptySongPlayStats();
+    const prev = map.get(activeEntry.title) || initialSongPlayStats(activeEntry.title);
     map.set(activeEntry.title, { ...prev, completed: prev.completed + 1 });
   }, [activeEntry?.title]);
 

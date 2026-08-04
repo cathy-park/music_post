@@ -17,8 +17,47 @@ export type SongPlayStats = {
 /** 각 곡의 실제 재생 통계를 추적하는 Map: title → SongPlayStats */
 export type SongPlayMap = Map<string, SongPlayStats>;
 
-export function emptySongPlayStats(): SongPlayStats {
-  return { seconds: 0, count: 0, completed: 0, buckets: new Map() };
+// ── 구간별 통과 횟수를 기기(브라우저)에 영구 저장 ──────────────────
+// 방문(세션)이 바뀌어도 "이 부분은 예전에 이미 들었다"를 기억하기 위함.
+// 재생 횟수/완청 여부는 세션(방문)별로 의미가 있어 그대로 두고, 반복구간 판별에
+// 쓰이는 구간 통과 횟수만 기기 로컬에 누적한다. 브라우저 데이터를 지우거나 다른
+// 기기로 접속하면 이 기억은 리셋된다.
+const BUCKETS_STORAGE_KEY = 'music_diary_song_buckets_v1';
+
+function loadAllPersistedBuckets(): Record<string, Record<number, number>> {
+  try {
+    const raw = localStorage.getItem(BUCKETS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAllPersistedBuckets(all: Record<string, Record<number, number>>) {
+  try {
+    localStorage.setItem(BUCKETS_STORAGE_KEY, JSON.stringify(all));
+  } catch {
+    // 저장 공간 부족 등으로 실패해도 이번 세션 집계 자체는 계속 정상 동작
+  }
+}
+
+/** 이 기기에서 지금까지(이전 방문 포함) 특정 곡의 구간별 통과 횟수를 가져온다 */
+export function getPersistedBuckets(title: string): Map<number, number> {
+  const entry = loadAllPersistedBuckets()[title];
+  return entry ? new Map(Object.entries(entry).map(([k, v]) => [Number(k), v])) : new Map();
+}
+
+/** 구간 통과 횟수를 기기 로컬에 반영한다 (다음 방문에서도 "이미 들은 부분"으로 인식되도록) */
+export function persistBucketVisit(title: string, bucket: number, newCount: number) {
+  const all = loadAllPersistedBuckets();
+  if (!all[title]) all[title] = {};
+  all[title][bucket] = newCount;
+  saveAllPersistedBuckets(all);
+}
+
+/** 새 세션에서 곡을 처음 만났을 때, 이전 방문의 구간 기록을 이어받은 초기 통계를 만든다 */
+export function initialSongPlayStats(title: string): SongPlayStats {
+  return { seconds: 0, count: 0, completed: 0, buckets: getPersistedBuckets(title) };
 }
 
 function formatMMSS(sec: number): string {
