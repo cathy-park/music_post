@@ -2,15 +2,15 @@ import { useCallback, useEffect, useRef } from 'react';
 import { supabase, isSupabaseReady } from '../lib/supabase';
 import { parseUserAgent } from '../lib/userAgent';
 
-/** 곡별 재생 통계: 누적 재생 초 + 재생(시작) 횟수 */
-export type SongPlayStats = { seconds: number; count: number };
+/** 곡별 재생 통계: 누적 재생 초 + 재생(시작) 횟수 + 완청(끝까지 재생) 횟수 */
+export type SongPlayStats = { seconds: number; count: number; completed: number };
 
-/** 각 곡의 실제 재생 통계를 추적하는 Map: title → { seconds, count } */
+/** 각 곡의 실제 재생 통계를 추적하는 Map: title → { seconds, count, completed } */
 export type SongPlayMap = Map<string, SongPlayStats>;
 
 /**
  * 재생 통계 맵을 DB 저장용 문자열로 변환
- * 형식: "곡제목 - 1분 23초 · 3회\n곡제목2 - 45초 · 1회" (줄바꿈 구분)
+ * 형식: "곡제목 - 1분 23초 · 3회 재생 · 완청 1회\n곡제목2 - 45초 · 1회 재생 · 미완청" (줄바꿈 구분)
  */
 function formatSongPlayMap(map: SongPlayMap): string | null {
   if (map.size === 0) return null;
@@ -18,12 +18,14 @@ function formatSongPlayMap(map: SongPlayMap): string | null {
   for (const [title, stats] of map) {
     const sec = stats.seconds;
     const count = stats.count;
-    if (sec < 1 && count < 1) continue; // 재생 시간도 없고 재생 횟수도 없으면 무시
+    const completed = stats.completed;
+    if (sec < 1 && count < 1 && completed < 1) continue; // 아무 활동도 없으면 무시
     const timeStr = sec < 60
       ? `${Math.floor(sec)}초`
       : `${Math.floor(sec / 60)}분 ${Math.floor(sec % 60)}초`;
-    const countStr = count > 0 ? ` · ${count}회` : '';
-    lines.push(`${title} - ${timeStr}${countStr}`);
+    const countStr = count > 0 ? ` · ${count}회 재생` : '';
+    const completedStr = count > 0 ? ` · ${completed > 0 ? `완청 ${completed}회` : '미완청'}` : '';
+    lines.push(`${title} - ${timeStr}${countStr}${completedStr}`);
   }
   return lines.length > 0 ? lines.join('\n') : null;
 }

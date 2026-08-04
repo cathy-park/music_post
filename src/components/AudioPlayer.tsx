@@ -22,12 +22,14 @@ type Props = {
   onProgress?: (current: number, duration: number) => void;
   onPlayStart?: () => void;
   onPlayingChange?: (playing: boolean) => void;
+  /** 스킵이 아니라 곡이 끝까지 자연 재생되어 끝났을 때만 호출됨 (완청 판별용) */
+  onCompleted?: () => void;
   onEnded?: () => void;
   onPrev?: (() => void) | null;
   onNext?: (() => void) | null;
 };
 
-const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onPlayStart, onPlayingChange, onEnded, onPrev, onNext }, ref) => {
+const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onPlayStart, onPlayingChange, onCompleted, onEnded, onPrev, onNext }, ref) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -157,6 +159,7 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, a
         onEnded={() => {
           setPlaying(false);
           onPlayingChange?.(false);
+          onCompleted?.();
           onEnded?.();
         }}
         onTimeUpdate={(event) => {

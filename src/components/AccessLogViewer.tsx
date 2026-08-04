@@ -196,15 +196,36 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
                         {log.listened_songs ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                             {log.listened_songs.split('\n').map((line, i) => {
-                              // "곡제목 - 1분 23초" 형식 파싱
+                              // "곡제목 - 1분 23초 · 3회 재생 · 완청 1회" 형식 파싱
                               const dashIdx = line.lastIndexOf(' - ');
                               if (dashIdx > 0) {
                                 const title = line.substring(0, dashIdx);
-                                const time = line.substring(dashIdx + 3);
+                                const rest = line.substring(dashIdx + 3);
+                                // 마지막 " · 완청 N회" / " · 미완청" 조각만 따로 떼어 배지로 표시
+                                const parts = rest.split(' · ');
+                                const last = parts[parts.length - 1];
+                                const isCompletionTag = last === '미완청' || /^완청 \d+회$/.test(last);
+                                const time = isCompletionTag ? parts.slice(0, -1).join(' · ') : rest;
+                                const completionTag = isCompletionTag ? last : null;
                                 return (
-                                  <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                                  <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
                                     <span style={{ color: '#555', fontWeight: 500 }}>♪ {title}</span>
                                     <span style={{ color: '#d75a68', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>{time}</span>
+                                    {completionTag && (
+                                      <span
+                                        style={{
+                                          fontSize: 10,
+                                          fontWeight: 700,
+                                          whiteSpace: 'nowrap',
+                                          padding: '1px 6px',
+                                          borderRadius: 8,
+                                          color: completionTag === '미완청' ? '#8a8a8a' : '#2f9e5c',
+                                          background: completionTag === '미완청' ? '#f0f0f0' : '#e6f7ee',
+                                        }}
+                                      >
+                                        {completionTag}
+                                      </span>
+                                    )}
                                   </div>
                                 );
                               }

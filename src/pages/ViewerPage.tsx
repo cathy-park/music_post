@@ -235,7 +235,7 @@ export default function ViewerPage() {
       // 정상적인 재생 진행일 때만 누적 (0~2초 범위, seek 제외)
       if (delta > 0 && delta < 2) {
         const map = songPlayMapRef.current;
-        const prev = map.get(activeEntry.title) || { seconds: 0, count: 0 };
+        const prev = map.get(activeEntry.title) || { seconds: 0, count: 0, completed: 0 };
         map.set(activeEntry.title, { ...prev, seconds: prev.seconds + delta });
       }
     }
@@ -246,8 +246,16 @@ export default function ViewerPage() {
   const handlePlayStart = useCallback(() => {
     if (!activeEntry?.title) return;
     const map = songPlayMapRef.current;
-    const prev = map.get(activeEntry.title) || { seconds: 0, count: 0 };
+    const prev = map.get(activeEntry.title) || { seconds: 0, count: 0, completed: 0 };
     map.set(activeEntry.title, { ...prev, count: prev.count + 1 });
+  }, [activeEntry?.title]);
+
+  // 완청 추적: 스킵이 아니라 곡이 끝까지 자연 재생됐을 때만 카운트
+  const handleCompleted = useCallback(() => {
+    if (!activeEntry?.title) return;
+    const map = songPlayMapRef.current;
+    const prev = map.get(activeEntry.title) || { seconds: 0, count: 0, completed: 0 };
+    map.set(activeEntry.title, { ...prev, completed: prev.completed + 1 });
   }, [activeEntry?.title]);
 
   // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정 + PWA manifest 동적 주입
@@ -401,6 +409,7 @@ export default function ViewerPage() {
                       onProgress={handlePlayTimeTrack}
                       onPlayStart={handlePlayStart}
                       onPlayingChange={notifyPlaying}
+                      onCompleted={handleCompleted}
                       onEnded={handleNext}
                       onPrev={prevEntry ? handlePrev : null}
                       onNext={nextEntry ? handleNext : null}
