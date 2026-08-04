@@ -21,12 +21,13 @@ type Props = {
   autoPlay?: boolean;
   onProgress?: (current: number, duration: number) => void;
   onPlayStart?: () => void;
+  onPlayingChange?: (playing: boolean) => void;
   onEnded?: () => void;
   onPrev?: (() => void) | null;
   onNext?: (() => void) | null;
 };
 
-const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onPlayStart, onEnded, onPrev, onNext }, ref) => {
+const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onPlayStart, onPlayingChange, onEnded, onPrev, onNext }, ref) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -53,12 +54,14 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, a
 
   useEffect(() => {
     setPlaying(false);
+    onPlayingChange?.(false);
     setCurrent(0);
     setDuration(0);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.load();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedSrc]);
 
   // ── Media Session API: 블루투스/잠금화면 미디어 컨트롤 ──
@@ -149,10 +152,11 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, a
         ref={audioRef}
         src={resolvedSrc || undefined}
         autoPlay={autoPlay}
-        onPlay={() => { setPlaying(true); onPlayStart?.(); }}
-        onPause={() => setPlaying(false)}
+        onPlay={() => { setPlaying(true); onPlayStart?.(); onPlayingChange?.(true); }}
+        onPause={() => { setPlaying(false); onPlayingChange?.(false); }}
         onEnded={() => {
           setPlaying(false);
+          onPlayingChange?.(false);
           onEnded?.();
         }}
         onTimeUpdate={(event) => {

@@ -170,7 +170,8 @@ export default function ViewerPage() {
   const songPlayMapRef = useRef<SongPlayMap>(new Map());
   const lastTimeRef = useRef<{ title: string; time: number } | null>(null);
 
-  useAccessLog(songPlayMapRef, token); // 방문자 접속 및 체류 시간 기록
+  // 방문자 접속 및 체류 시간 기록 (화면이 안 보여도 음악이 재생 중이면 계속 "체류"로 집계됨)
+  const { notifyPlaying } = useAccessLog(songPlayMapRef, token);
 
   const [book, setBook] = useState<DiaryBook | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -399,6 +400,7 @@ export default function ViewerPage() {
                       autoPlay={autoPlayNext}
                       onProgress={handlePlayTimeTrack}
                       onPlayStart={handlePlayStart}
+                      onPlayingChange={notifyPlaying}
                       onEnded={handleNext}
                       onPrev={prevEntry ? handlePrev : null}
                       onNext={nextEntry ? handleNext : null}

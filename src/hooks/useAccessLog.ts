@@ -31,11 +31,32 @@ function formatSongPlayMap(map: SongPlayMap): string | null {
 export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token?: string) {
   const sessionId = useRef(crypto.randomUUID());
   const hasInserted = useRef(false);
-  // 탭이 화면에 보이는(포그라운드) 시간만 누적한다 — 백그라운드로 가 있는 동안은 세지 않는다.
+  // 탭이 화면에 보이거나(포그라운드), 음악이 재생 중이면(백그라운드 재생 포함) 누적한다.
+  // 화면도 안 보이고 재생도 안 하고 있을 때만 카운트를 멈춘다.
   const accumulatedSec = useRef(0);
-  const activeStart = useRef<number | null>(
-    typeof document !== 'undefined' && document.visibilityState === 'visible' ? Date.now() : null
-  );
+  const isVisible = useRef(typeof document !== 'undefined' && document.visibilityState === 'visible');
+  const isPlaying = useRef(false);
+  const activeStart = useRef<number | null>(isVisible.current ? Date.now() : null);
+  const flushRef = useRef<(() => void) | null>(null);
+
+  // 화면 노출 상태·재생 상태 중 하나라도 바뀌면 타이머를 시작/정지한다.
+  const syncEngagement = useCallback(() => {
+    const shouldRun = isVisible.current || isPlaying.current;
+    const isRunning = activeStart.current !== null;
+    if (shouldRun && !isRunning) {
+      activeStart.current = Date.now();
+    } else if (!shouldRun && isRunning) {
+      accumulatedSec.current += (Date.now() - activeStart.current!) / 1000;
+      activeStart.current = null;
+      flushRef.current?.(); // 카운트를 멈추는 시점 값을 즉시 반영
+    }
+  }, []);
+
+  /** AudioPlayer 등 외부에서 재생/일시정지 상태가 바뀔 때 호출 */
+  const notifyPlaying = useCallback((playing: boolean) => {
+    isPlaying.current = playing;
+    syncEngagement();
+  }, [syncEngagement]);
 
   useEffect(() => {
     if (!isSupabaseReady || !supabase) return;
@@ -85,22 +106,14 @@ export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token
         .eq('id', sid)
         .then(() => {});
     };
+    flushRef.current = updateDuration;
 
     // 5초 주기로 업데이트
     const intervalId = setInterval(updateDuration, 5000);
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        // 백그라운드로 전환되는 시점까지의 포그라운드 시간을 누적하고 카운트를 멈춘다
-        if (activeStart.current !== null) {
-          accumulatedSec.current += (Date.now() - activeStart.current) / 1000;
-          activeStart.current = null;
-        }
-        updateDuration();
-      } else {
-        // 다시 포그라운드로 돌아오면 카운트를 재개한다
-        activeStart.current = Date.now();
-      }
+      isVisible.current = document.visibilityState === 'visible';
+      syncEngagement();
     };
 
     window.addEventListener('visibilitychange', handleVisibilityChange);
@@ -110,9 +123,12 @@ export function useAccessLog(songPlayMapRef: React.RefObject<SongPlayMap>, token
     return () => {
       clearInterval(intervalId);
       updateDuration();
+      flushRef.current = null;
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', updateDuration);
       window.removeEventListener('pagehide', updateDuration);
     };
-  }, []);
+  }, [songPlayMapRef, token, syncEngagement]);
+
+  return { notifyPlaying };
 }
