@@ -67,8 +67,9 @@ function formatMMSS(sec: number): string {
 }
 
 /**
- * 구간별 통과 횟수에서 "가장 많이 반복된 구간"을 찾아 "1:20-1:40(3회)" 형식으로 요약한다.
- * 모든 구간이 1회씩만 지나갔으면(반복 없음) null을 반환한다.
+ * 구간별 통과 횟수에서 "가장 많이 반복된 구간"을 찾아 "1:20-1:40(2회)" 형식으로 요약한다.
+ * 괄호 안 숫자는 "총 지나간 횟수"가 아니라 "처음 듣고 나서 추가로 몇 번 더 들었는지"다
+ * (총 2번 지나갔으면 "1회"). 모든 구간이 1회씩만 지나갔으면(반복 없음) null을 반환한다.
  */
 function summarizeRepeatRange(buckets: Map<number, number>): string | null {
   if (buckets.size === 0) return null;
@@ -90,12 +91,12 @@ function summarizeRepeatRange(buckets: Map<number, number>): string | null {
   const top = ranges[0];
   const startSec = top[0] * BUCKET_SEC;
   const endSec = (top[top.length - 1] + 1) * BUCKET_SEC;
-  return `${formatMMSS(startSec)}-${formatMMSS(endSec)}(${maxCount}회)`;
+  return `${formatMMSS(startSec)}-${formatMMSS(endSec)}(${maxCount - 1}회)`;
 }
 
 /**
  * 재생 통계 맵을 DB 저장용 문자열로 변환
- * 형식: "곡제목 - 1분 23초 · 3회 재생 · 완청 1회 · 반복구간 1:20-1:40(3회)" (줄바꿈 구분)
+ * 형식: "곡제목 - 1분 23초 · 3회 재생 · 완청 1회 · 반복구간 1:20-1:40(2회)" (줄바꿈 구분)
  */
 function formatSongPlayMap(map: SongPlayMap): string | null {
   if (map.size === 0) return null;
