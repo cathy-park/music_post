@@ -2,6 +2,20 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { AccessLog } from '../types';
 import { X, Clock, Smartphone, Music, Trash2, RefreshCw } from 'lucide-react';
+import { clearAllPersistedBuckets, clearPersistedBucketsForTitles } from '../hooks/useAccessLog';
+
+/** listened_songs 텍스트("곡제목 - 15초 · 1회 재생 · ...")에서 곡 제목만 뽑아낸다 */
+function extractTitlesFromLogs(logsToScan: AccessLog[]): string[] {
+  const titles = new Set<string>();
+  for (const log of logsToScan) {
+    if (!log.listened_songs) continue;
+    for (const line of log.listened_songs.split('\n')) {
+      const dashIdx = line.lastIndexOf(' - ');
+      if (dashIdx > 0) titles.add(line.substring(0, dashIdx));
+    }
+  }
+  return [...titles];
+}
 
 interface BookInfo {
   id: string;
@@ -72,6 +86,14 @@ export default function AccessLogViewer({ onClose }: { onClose: () => void }) {
     if (error) {
       alert('삭제 중 오류가 발생했습니다: ' + error.message);
     } else {
+      // DB 로그와 함께, 이 기기(브라우저)에 남아 있는 "반복구간" 기억도 지운다.
+      // 단, 이건 이 기기의 localStorage만 지울 수 있어서 다른 사람(다른 기기)이
+      // 남긴 반복구간 기억까지 지우지는 못한다.
+      if (activeToken === '__all__') {
+        clearAllPersistedBuckets();
+      } else {
+        clearPersistedBucketsForTitles(extractTitlesFromLogs(logs));
+      }
       setLogs([]);
     }
     setClearing(false);

@@ -55,6 +55,23 @@ export function persistBucketVisit(title: string, bucket: number, newCount: numb
   saveAllPersistedBuckets(all);
 }
 
+/** 이 기기에 저장된 구간 통과 기록을 통째로 지운다 (전체 로그 초기화용) */
+export function clearAllPersistedBuckets() {
+  try {
+    localStorage.removeItem(BUCKETS_STORAGE_KEY);
+  } catch {
+    // 저장 공간 접근 실패 시 조용히 무시
+  }
+}
+
+/** 이 기기에 저장된 구간 통과 기록 중 지정한 곡 제목들만 지운다 (카테고리별 로그 초기화용) */
+export function clearPersistedBucketsForTitles(titles: string[]) {
+  if (titles.length === 0) return;
+  const all = loadAllPersistedBuckets();
+  for (const title of titles) delete all[title];
+  saveAllPersistedBuckets(all);
+}
+
 /** 새 세션에서 곡을 처음 만났을 때, 이전 방문의 구간 기록을 이어받은 초기 통계를 만든다 */
 export function initialSongPlayStats(title: string): SongPlayStats {
   return { seconds: 0, count: 0, completed: 0, buckets: getPersistedBuckets(title) };
