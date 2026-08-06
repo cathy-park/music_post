@@ -173,6 +173,9 @@ export default function ViewerPage() {
   //  값이 어긋날 여지가 있었다 — 곡별 Map으로 바꿔 그 경계 문제 자체를 없앤다.)
   const lastTimeByTitleRef = useRef<Map<string, number>>(new Map());
   const lastBucketByTitleRef = useRef<Map<string, number>>(new Map());
+  // 곡별로 "지금 이어지고 있는 재생 구간"이 시작된 위치. 되감기·탐색(seek)이 일어나면
+  // 그 지점으로 다시 잡는다 — 완청 판정 시 "초반부터 실제로 이어서 들었는지" 확인하는 데 쓴다.
+  const runStartByTitleRef = useRef<Map<string, number>>(new Map());
 
   // 방문자 접속 및 체류 시간 기록 (화면이 안 보여도 음악이 재생 중이면 계속 "체류"로 집계됨)
   const { notifyPlaying } = useAccessLog(songPlayMapRef, token);
@@ -244,6 +247,15 @@ export default function ViewerPage() {
         const prev = map.get(title) || initialSongPlayStats(title);
         map.set(title, { ...prev, seconds: prev.seconds + delta });
       }
+      // 되감기(delta<0)나 2초 이상 건너뛰는 탐색(delta>=2)은 "이어서 듣던 흐름"이 끊긴 것으로
+      // 보고, 완청 판정에 쓸 현재 구간의 시작 지점을 그 위치로 다시 잡는다.
+      // (일시정지 후 같은 위치에서 재개하는 경우는 delta가 0에 가까워 여기 해당하지 않는다.)
+      if (delta < 0 || delta >= 2) {
+        runStartByTitleRef.current.set(title, current);
+      }
+    } else {
+      // 이 곡을 세션에서 처음 관찰하는 시점 = 새 구간의 시작
+      runStartByTitleRef.current.set(title, current);
     }
     lastTimeByTitleRef.current.set(title, current);
 
@@ -273,13 +285,18 @@ export default function ViewerPage() {
     map.set(activeEntry.title, { ...prev, count: prev.count + 1 });
   }, [activeEntry?.title]);
 
-  // 완청 추적: 스킵이 아니라 곡이 끝까지 자연 재생됐을 때만 카운트
+  // 완청 추적: 곡 초반부(앞 10%)에서 시작해 끊기지 않고 끝까지 이어졌을 때만 카운트.
+  // (가사 후반부를 눌러 점프한 뒤 몇 초 만에 끝나는 경우 등은 완청으로 잡지 않는다.)
   const handleCompleted = useCallback(() => {
     if (!activeEntry?.title) return;
+    const { duration } = audioProgress;
+    const runStart = runStartByTitleRef.current.get(activeEntry.title) ?? 0;
+    if (duration > 0 && runStart > duration * 0.1) return;
+
     const map = songPlayMapRef.current;
     const prev = map.get(activeEntry.title) || initialSongPlayStats(activeEntry.title);
     map.set(activeEntry.title, { ...prev, completed: prev.completed + 1 });
-  }, [activeEntry?.title]);
+  }, [activeEntry?.title, audioProgress]);
 
   // 브라우저 탭(문서) 제목을 카테고리 이름으로 동적 설정 + PWA manifest 동적 주입
   useEffect(() => {
