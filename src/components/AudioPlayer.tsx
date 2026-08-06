@@ -11,7 +11,6 @@ function formatTime(seconds: number): string {
 
 export type AudioPlayerRef = {
   seekTo: (time: number) => void;
-  play: () => void;
 };
 
 type Props = {
@@ -20,8 +19,6 @@ type Props = {
   subtitle?: string;
   albumTitle?: string;
   autoPlay?: boolean;
-  /** true면 곡이 끝나도 onEnded를 호출하지 않고 브라우저가 같은 곡을 처음부터 반복 재생한다(한 곡 반복). */
-  loop?: boolean;
   onProgress?: (current: number, duration: number) => void;
   onPlayStart?: () => void;
   onPlayingChange?: (playing: boolean) => void;
@@ -32,7 +29,7 @@ type Props = {
   onNext?: (() => void) | null;
 };
 
-const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, loop, onProgress, onPlayStart, onPlayingChange, onCompleted, onEnded, onPrev, onNext }, ref) => {
+const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, albumTitle, autoPlay, onProgress, onPlayStart, onPlayingChange, onCompleted, onEnded, onPrev, onNext }, ref) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -44,9 +41,6 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, a
       if (audioRef.current) {
         audioRef.current.currentTime = time;
       }
-    },
-    play: () => {
-      audioRef.current?.play();
     }
   }));
 
@@ -160,7 +154,6 @@ const AudioPlayer = forwardRef<AudioPlayerRef, Props>(({ src, title, subtitle, a
         ref={audioRef}
         src={resolvedSrc || undefined}
         autoPlay={autoPlay}
-        loop={loop}
         onPlay={() => { setPlaying(true); onPlayStart?.(); onPlayingChange?.(true); }}
         onPause={() => { setPlaying(false); onPlayingChange?.(false); }}
         onEnded={() => {

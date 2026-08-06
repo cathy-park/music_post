@@ -1,4 +1,4 @@
-import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp, Download, Shuffle, Repeat, Repeat1, PlayCircle } from 'lucide-react';
+import { Heart, LockKeyhole, Music2, Settings, ChevronDown, ChevronUp, Download } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import EmptyAudio from '../components/EmptyAudio';
@@ -185,11 +185,6 @@ export default function ViewerPage() {
   const [playlistOpen, setPlaylistOpen] = useState(true);
   const [audioProgress, setAudioProgress] = useState({ current: 0, duration: 0 });
   const [autoPlayNext, setAutoPlayNext] = useState(false);
-  // 반복재생: off(안 함) → all(전체 반복) → one(한 곡 반복) 순으로 순환
-  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
-  const [shuffle, setShuffle] = useState(false);
-  // 셔플을 켤 때 한 번만 순서를 섞는다 — 재생 도중 순서가 계속 바뀌면 "다음 곡"이 매번 달라져 혼란스럽다.
-  const [shuffleOrder, setShuffleOrder] = useState<string[]>([]);
   const readingScrollRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<AudioPlayerRef>(null);
 
@@ -232,20 +227,6 @@ export default function ViewerPage() {
     }
     load();
   }, [token]);
-
-  // 랜덤재생을 켤 때마다 새로 섞는다(꺼져 있으면 원래 순서를 그대로 쓴다).
-  useEffect(() => {
-    if (!shuffle) {
-      setShuffleOrder([]);
-      return;
-    }
-    const ids = entries.map((entry) => entry.id);
-    for (let i = ids.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [ids[i], ids[j]] = [ids[j], ids[i]];
-    }
-    setShuffleOrder(ids);
-  }, [shuffle, entries]);
 
   // 실제 재생 시간 추적: onTimeUpdate 콜백에서 곡별 누적 재생 시간 기록
   const handlePlayTimeTrack = useCallback((current: number, duration: number) => {
@@ -322,24 +303,9 @@ export default function ViewerPage() {
     setAudioProgress({ current: 0, duration: 0 });
   }, [activeId]);
 
-  // 랜덤재생이 켜져 있으면 섞인 순서를, 아니면 원래 목록 순서를 재생 순서로 쓴다.
-  const playOrder = useMemo(() => {
-    if (shuffle && shuffleOrder.length === entries.length) return shuffleOrder;
-    return entries.map((entry) => entry.id);
-  }, [shuffle, shuffleOrder, entries]);
-
-  const orderIndex = playOrder.indexOf(activeId);
-  // 전체반복일 때만 끝에서 처음으로, 처음에서 끝으로 이어진다(곡이 2곡 이상일 때만 — 1곡뿐이면 자기 자신으로 순환하지 않는다).
-  const shouldWrap = repeatMode === 'all' && playOrder.length > 1;
-  const prevEntryId = orderIndex > 0 ? playOrder[orderIndex - 1] : shouldWrap ? playOrder[playOrder.length - 1] : null;
-  const nextEntryId =
-    orderIndex >= 0 && orderIndex < playOrder.length - 1
-      ? playOrder[orderIndex + 1]
-      : shouldWrap
-        ? playOrder[0]
-        : null;
-  const prevEntry = prevEntryId ? entries.find((e) => e.id === prevEntryId) ?? null : null;
-  const nextEntry = nextEntryId ? entries.find((e) => e.id === nextEntryId) ?? null : null;
+  const currentIndex = entries.findIndex(e => e.id === activeId);
+  const prevEntry = currentIndex > 0 ? entries[currentIndex - 1] : null;
+  const nextEntry = currentIndex >= 0 && currentIndex < entries.length - 1 ? entries[currentIndex + 1] : null;
 
   const handleNext = useCallback(() => {
     if (nextEntry) {
@@ -354,26 +320,6 @@ export default function ViewerPage() {
       setAutoPlayNext(true);
     }
   }, [prevEntry]);
-
-  // 전체재생: 현재 재생 순서(랜덤재생이면 섞인 순서)의 첫 곡부터 다시 시작한다.
-  const handlePlayAll = useCallback(() => {
-    const firstId = playOrder[0];
-    if (!firstId) return;
-    if (firstId === activeId) {
-      playerRef.current?.seekTo(0);
-      playerRef.current?.play();
-    } else {
-      setActiveId(firstId);
-      setAutoPlayNext(true);
-    }
-  }, [playOrder, activeId]);
-
-  const cycleRepeatMode = useCallback(() => {
-    setRepeatMode((prev) => (prev === 'off' ? 'all' : prev === 'all' ? 'one' : 'off'));
-  }, []);
-
-  const repeatLabel =
-    repeatMode === 'off' ? '반복재생 (안 함)' : repeatMode === 'all' ? '반복재생 (전체 반복)' : '반복재생 (한 곡 반복)';
 
   if (error) {
     return (
@@ -423,39 +369,6 @@ export default function ViewerPage() {
                 <h2>{book?.title || '재생 목록'}</h2>
               </div>
               <strong className="playlist-count">{entries.length}곡</strong>
-            </div>
-
-            <div className="playlist-controls">
-              <button
-                type="button"
-                className={`playlist-control-btn${shuffle ? ' active' : ''}`}
-                onClick={() => setShuffle((prev) => !prev)}
-                aria-pressed={shuffle}
-                aria-label="랜덤재생"
-                title="랜덤재생"
-              >
-                <Shuffle size={15} />
-              </button>
-              <button
-                type="button"
-                className="playlist-control-btn play-all-btn"
-                onClick={handlePlayAll}
-                disabled={entries.length === 0}
-                aria-label="전체재생"
-                title="전체재생"
-              >
-                <PlayCircle size={15} />
-                <span>전체재생</span>
-              </button>
-              <button
-                type="button"
-                className={`playlist-control-btn${repeatMode !== 'off' ? ' active' : ''}`}
-                onClick={cycleRepeatMode}
-                aria-label={repeatLabel}
-                title={repeatLabel}
-              >
-                {repeatMode === 'one' ? <Repeat1 size={15} /> : <Repeat size={15} />}
-              </button>
             </div>
 
             <div className="entry-list" aria-label="음악일기 목록">
@@ -515,7 +428,6 @@ export default function ViewerPage() {
                       subtitle={activeEntry.subtitle}
                       albumTitle={book?.title}
                       autoPlay={autoPlayNext}
-                      loop={repeatMode === 'one'}
                       onProgress={handlePlayTimeTrack}
                       onPlayStart={handlePlayStart}
                       onPlayingChange={notifyPlaying}
